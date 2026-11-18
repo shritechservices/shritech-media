@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ShriTech AutoPost</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#07100b;--card:#111a15;--card2:#16221b;--line:#22352a;--g:#22c55e;--g2:#16a34a;--gold:#facc15;--red:#ef4444;--txt:#e8f2ec;--mut:#94a89b;--blue:#3b82f6}
+*{box-sizing:border-box}
+body{margin:0;font-family:Poppins,system-ui,sans-serif;background:radial-gradient(1200px 600px at 10% -10%,#0f3b22 0,transparent 60%),radial-gradient(900px 500px at 110% 10%,#3a3006 0,transparent 55%),var(--bg);color:var(--txt);min-height:100vh}
+a{color:var(--g)}
+header{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:12px;padding:14px 18px;background:rgba(7,16,11,.85);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.logo{font-weight:700;font-size:22px}.logo b{color:var(--g)}
+.logo small{font-weight:500;font-size:12px;color:var(--gold);border:1px solid var(--gold);border-radius:99px;padding:2px 8px;margin-left:8px;vertical-align:middle}
+.sp{flex:1}
+.btn{border:0;border-radius:12px;padding:10px 16px;font:600 14px Poppins;cursor:pointer;background:var(--g);color:#06210f;box-shadow:0 6px 20px rgba(34,197,94,.25)}
+.btn.o{background:transparent;color:var(--g);border:1.5px solid var(--g);box-shadow:none}
+.btn.gold{background:var(--gold);color:#2a2000;box-shadow:0 6px 20px rgba(250,204,21,.2)}
+.btn.red{background:transparent;color:var(--red);border:1.5px solid var(--red);box-shadow:none}
+.btn.sm{padding:6px 11px;font-size:12px;border-radius:9px}
+.btn:disabled{opacity:.5;cursor:default}
+main{max-width:1180px;margin:0 auto;padding:18px}
+.tabs{display:flex;gap:8px;margin:4px 0 18px;flex-wrap:wrap}
+.tab{padding:10px 18px;border-radius:99px;border:1.5px solid var(--line);background:var(--card);color:var(--mut);font:600 14px Poppins;cursor:pointer}
+.tab.on{border-color:var(--g);color:var(--g);background:#0f2a1a}
+.card{background:linear-gradient(180deg,var(--card2),var(--card));border:1px solid var(--line);border-radius:20px;padding:18px;margin-bottom:18px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.card h2{margin:0 0 4px;font-size:19px}.card .sub{color:var(--mut);font-size:13px;margin:0 0 14px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px}
+.stat b{display:block;font-size:28px;color:var(--g)}.stat span{color:var(--mut);font-size:13px}
+.stat.gold b{color:var(--gold)}.stat.red b{color:var(--red)}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
+.dow{color:var(--mut);font-size:12px;text-align:center;padding-bottom:2px}
+.day{min-height:96px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:7px;cursor:pointer;transition:.15s}
+.day:hover{border-color:var(--g)}
+.day.today{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset}
+.day.past{opacity:.55;cursor:default}
+.day.blank{background:transparent;border:0;cursor:default}
+.day .d{font-size:12px;color:var(--mut);display:flex;justify-content:space-between}
+.day .d b{color:var(--txt);font-size:15px}
+.chip{display:block;margin-top:5px;font-size:11px;padding:4px 6px;border-radius:8px;background:#0f2a1a;border-left:3px solid var(--g);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chip.posted{border-color:var(--g);background:#0d2617}.chip.failed{border-color:var(--red);background:#2a1111}
+.chip.partial{border-color:var(--gold);background:#2a2408}.chip.publishing{border-color:var(--blue);background:#0d1a2e}
+.chip.cancelled{opacity:.45;text-decoration:line-through}
+.badge{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;margin-right:4px;border:1px solid}
+.b-fb{color:#60a5fa;border-color:#1e40af}.b-ig{color:#f472b6;border-color:#9d174d}
+.s-scheduled{color:var(--g);border-color:var(--g2)}.s-posted{color:#4ade80;border-color:#166534}.s-failed{color:#f87171;border-color:#991b1b}
+.s-partial{color:var(--gold);border-color:#854d0e}.s-publishing{color:#60a5fa;border-color:#1e40af}.s-cancelled{color:var(--mut);border-color:var(--line)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--mut);font-weight:500}
+.thumb{width:54px;height:72px;object-fit:cover;border-radius:8px;background:#000;border:1px solid var(--line)}
+label{display:block;font-size:13px;color:var(--mut);margin:12px 0 6px}
+input,textarea,select{width:100%;background:#0a120d;color:var(--txt);border:1px solid var(--line);border-radius:12px;padding:11px 12px;font:14px Poppins;outline:none}
+input:focus,textarea:focus,select:focus{border-color:var(--g)}
+textarea{min-height:110px;resize:vertical}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.checks{display:flex;gap:16px;margin-top:6px}.checks label{display:flex;gap:8px;align-items:center;color:var(--txt);margin:0}
+.checks input{width:auto}
+.note{font-size:12px;color:var(--mut)}
+.ok{color:#4ade80}.err{color:#f87171}
+.res{white-space:pre-wrap;font-size:13px;margin-top:10px}
+.media-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-top:14px}
+.m{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;font-size:12px}
+.m video,.m img{width:100%;height:200px;object-fit:cover;background:#000;display:block}
+.m div{padding:8px}
+.m.sel{border-color:var(--gold);box-shadow:0 0 0 2px var(--gold)}
+.drop{border:2px dashed var(--g);border-radius:16px;padding:22px;text-align:center;color:var(--g);cursor:pointer;background:#0a1a10}
+.bar{height:8px;background:var(--line);border-radius:99px;overflow:hidden;margin-top:10px;display:none}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--g),var(--gold))}
+details{background:#0a120d;border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-top:12px}
+details summary{cursor:pointer;color:var(--gold);font-weight:600}
+details ol{padding-left:20px;line-height:1.7;font-size:13px;color:var(--txt)}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:20;padding:14px}
+.modal.on{display:flex}
+.modal .box{background:var(--card2);border:1px solid var(--line);border-radius:20px;max-width:640px;width:100%;max-height:92vh;overflow:auto;padding:20px}
+.center{max-width:420px;margin:12vh auto}
+.hide{display:none!important}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#0f2a1a;border:1px solid var(--g);color:var(--txt);padding:12px 18px;border-radius:12px;z-index:30;display:none}
+.day .add{display:none;color:var(--mut);font-size:12px;margin-top:2px}
+@media(max-width:720px){.row{grid-template-columns:1fr}.hide-sm{display:none}
+ main{padding:12px}.card{padding:14px;border-radius:16px}
+ .cal{grid-template-columns:1fr;gap:8px}.dow,.day.blank{display:none}
+ .day{min-height:0;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+ .day .d{font-size:13px}.day .d b{font-size:16px}
+ .day .add{display:block}.day.past .add{display:none}
+ .chip{font-size:13px;padding:7px 9px;white-space:normal}
+ .stats{grid-template-columns:1fr 1fr}.stat b{font-size:22px}
+ table{font-size:12px}.thumb{width:44px;height:60px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Shri<b>Tech</b><small>AutoPost</small></div>
+  <div class="sp"></div>
+  <button class="btn o sm hide" id="logoutBtn" onclick="logout()">Logout</button>
+</header>
+
+<!-- auth -->
+<div id="auth" class="center hide">
+  <div class="card">
+    <h2 id="authTitle">Admin login</h2>
+    <p class="sub" id="authSub">Enter your admin password.</p>
+    <label>Password</label><input type="password" id="pw" onkeydown="if(event.key==='Enter')doAuth()">
+    <div id="pw2wrap" class="hide"><label>Confirm password</label><input type="password" id="pw2" onkeydown="if(event.key==='Enter')doAuth()"></div>
+    <p class="err" id="authErr"></p>
+    <button class="btn" style="width:100%" onclick="doAuth()" id="authBtn">Login</button>
+  </div>
+</div>
+
+<main id="app" class="hide">
+  <div class="tabs">
+    <button class="tab on" data-t="cal" onclick="showTab('cal')">📅 Calendar & History</button>
+    <button class="tab" data-t="admin" onclick="showTab('admin')">⚙️ Admin & Setup</button>
+  </div>
+
+  <!-- ============ CALENDAR & HISTORY ============ -->
+  <section id="t-cal">
+    <div class="stats">
+      <div class="stat"><b id="stUp">0</b><span>Scheduled (upcoming)</span></div>
+      <div class="stat gold"><b id="stPosted">0</b><span>Posted (last 30 days)</span></div>
+      <div class="stat red"><b id="stFail">0</b><span>Failed (last 30 days)</span></div>
+      <div class="stat"><b id="stConn" style="font-size:16px;line-height:1.9">—</b><span>Meta connection</span></div>
+    </div>
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div><h2>30-day calendar</h2><p class="sub" id="calRange">Times shown in India time (IST)</p></div>
+        <div class="sp"></div>
+        <button class="btn gold" onclick="openNew()">+ New post</button>
+      </div>
+      <div class="cal" id="cal"></div>
+    </div>
+    <div class="card">
+      <h2>History — last 30 days</h2>
+      <p class="sub">Posts older than 30 days are removed automatically to save space.</p>
+      <div style="overflow-x:auto"><table><thead><tr><th></th><th>When (IST)</th><th>Post</th><th>Facebook</th><th>Instagram</th><th class="hide-sm">Status</th></tr></thead><tbody id="hist"></tbody></table></div>
+      <p class="note" id="histEmpty">No posts yet.</p>
+    </div>
+  </section>
+
+  <!-- ============ ADMIN ============ -->
+  <section id="t-admin" class="hide">
+    <div class="card">
+      <h2>Meta connection (Facebook + Instagram)</h2>
+      <p class="sub">These keys are saved securely in your private database. The token is never shown again after saving.</p>
+      <div class="row">
+        <div><label>Facebook Page ID</label><input id="sPage" placeholder="e.g. 1234567890"></div>
+        <div><label>Instagram Business Account ID</label><input id="sIg" placeholder="e.g. 1784xxxxxxxxxxxx"></div>
+      </div>
+      <label>Page Access Token (long-lived) <span id="tokHint" class="ok"></span></label>
+      <input id="sTok" type="password" placeholder="Paste new token (leave empty to keep the saved one)">
+      <div class="row">
+        <div><label>Graph API version</label><input id="sVer" placeholder="v23.0"></div>
+        <div><label>Connected as</label><input id="sWho" disabled></div>
+      </div>
+      <label>Default caption / hashtags</label>
+      <textarea id="sCap" placeholder="#ShriTech #AIPosts #WhatsAppMarketing&#10;📞 9993615146"></textarea>
+      <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
+        <button class="btn" onclick="saveSettings()">Save</button>
+        <button class="btn o" onclick="testConn()">Test connection</button>
+      </div>
+      <div class="res" id="connRes"></div>
+      <details>
+        <summary>How to get these keys (step by step)</summary>
+        <ol>
+          <li>Make sure your Instagram is a <b>Business or Creator</b> account and is <b>linked to your Facebook Page</b> (Instagram app → Settings → Account type / Linked accounts).</li>
+          <li>Go to <a href="https://developers.facebook.com/apps" target="_blank">developers.facebook.com/apps</a> → <b>Create app</b> → choose the <b>Business</b> type (or the use case "Manage everything on your Page" + "Manage messaging & content on Instagram").</li>
+          <li>Open <a href="https://developers.facebook.com/tools/explorer" target="_blank">Graph API Explorer</a>, pick your app, then add permissions: <code>pages_show_list, pages_read_engagement, pages_manage_posts, instagram_basic, instagram_content_publish, business_management</code> → <b>Generate Access Token</b> and allow your Page + Instagram.</li>
+          <li>Make it long-lived: open the <a href="https://developers.facebook.com/tools/debug/accesstoken/" target="_blank">Access Token Debugger</a>, paste the token → <b>Extend Access Token</b>.</li>
+          <li>Back in Graph Explorer, with the long-lived token, run <code>me/accounts</code>. Copy your Page's <b>id</b> (= Facebook Page ID) and its <b>access_token</b> (= Page Access Token, it does not expire).</li>
+          <li>Run <code>{page-id}?fields=instagram_business_account</code> — the <b>id</b> shown is your Instagram Business Account ID.</li>
+          <li>Paste all three here → <b>Save</b> → <b>Test connection</b>. You should see ✅ for both.</li>
+        </ol>
+      </details>
+    </div>
+
+    <div class="card">
+      <h2>Media library</h2>
+      <p class="sub">Upload reels (MP4, 9:16, max 50 MB) or images (JPG/PNG). Then schedule them from Claude chat or with “New post”.</p>
+      <div class="drop" onclick="document.getElementById('file').click()">⬆️ Tap to choose a video or image</div>
+      <input type="file" id="file" accept="video/mp4,video/quicktime,image/jpeg,image/png" class="hide" onchange="upload(this.files[0])">
+      <label>Title for this file (optional)</label><input id="upTitle" placeholder="e.g. Diwali reel Hindi">
+      <div class="bar" id="bar"><i></i></div><p class="note" id="upMsg"></p>
+      <div class="media-grid" id="mediaGrid"></div>
+    </div>
+
+    <div class="card">
+      <h2>Change admin password</h2>
+      <div class="row">
+        <div><label>Old password</label><input type="password" id="cpOld"></div>
+        <div><label>New password (8+ characters)</label><input type="password" id="cpNew"></div>
+      </div>
+      <button class="btn o" style="margin-top:14px" onclick="changePw()">Update password</button>
+      <p id="cpMsg" class="note"></p>
+    </div>
+  </section>
+</main>
+
+<!-- modal -->
+<div class="modal" id="modal" onclick="if(event.target===this)closeModal()"><div class="box" id="mbox"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const TZ='Asia/Kolkata';
+let TOKEN=localStorage.getItem('st_token')||'';
+let SETTINGS={}, POSTS=[], MEDIA=[], pwMode='login';
+
+async function api(action,data={}){
+  const r=await fetch('/api',{method:'POST',headers:{'Content-Type':'application/json','x-session':TOKEN},body:JSON.stringify({action,...data})});
+  const j=await r.json().catch(()=>({error:'Bad response'}));
+  if(r.status===401&&action!=='login'){TOKEN='';localStorage.removeItem('st_token');boot();throw new Error('Please login again');}
+  if(!r.ok||j.error) throw new Error(j.error||('Error '+r.status));
+  return j;
+}
+function toast(t){const e=document.getElementById('toast');e.textContent=t;e.style.display='block';clearTimeout(e._t);e._t=setTimeout(()=>e.style.display='none',3200)}
+// Preview through jsDelivr (serves proper video/mp4 for mobile browsers); posting still uses the raw GitHub URL
+const prev=u=>{const m=String(u||'').match(/^https:\/\/raw\.githubusercontent\.com\/([^/]+)\/([^/]+)\/([^/]+)\/(.+)$/);return m?`https://cdn.jsdelivr.net/gh/${m[1]}/${m[2]}@${m[3]}/${m[4]}`:u};
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt=(d,o)=>new Intl.DateTimeFormat('en-IN',{timeZone:TZ,...o}).format(new Date(d));
+const istKey=d=>fmt(d,{year:'numeric',month:'2-digit',day:'2-digit'});
+const tm=d=>fmt(d,{hour:'numeric',minute:'2-digit',hour12:true});
+
+async function boot(){
+  document.getElementById('app').classList.add('hide');document.getElementById('auth').classList.add('hide');
+  document.getElementById('logoutBtn').classList.add('hide');
+  if(TOKEN){try{await api('get_settings').then(s=>SETTINGS=s);return enter()}catch(e){}}
+  const st=await api('status');
+  pwMode=st.password_set?'login':'setup';
+  document.getElementById('authTitle').textContent=pwMode==='setup'?'Create admin password':'Admin login';
+  document.getElementById('authSub').textContent=pwMode==='setup'?'First time here — choose a password (8+ characters). Only you will know it.':'Enter your admin password.';
+  document.getElementById('authBtn').textContent=pwMode==='setup'?'Create password':'Login';
+  document.getElementById('pw2wrap').classList.toggle('hide',pwMode!=='setup');
+  document.getElementById('auth').classList.remove('hide');
+}
+async function doAuth(){
+  const pw=document.getElementById('pw').value, e=document.getElementById('authErr');e.textContent='';
+  try{
+    if(pwMode==='setup'){
+      if(pw!==document.getElementById('pw2').value) throw new Error('Passwords do not match');
+      await api('setup_password',{password:pw});
+    }
+    const r=await api('login',{password:pw});TOKEN=r.token;localStorage.setItem('st_token',TOKEN);
+    SETTINGS=await api('get_settings');enter();
+  }catch(x){e.textContent=x.message}
+}
+function enter(){
+  document.getElementById('auth').classList.add('hide');document.getElementById('app').classList.remove('hide');
+  document.getElementById('logoutBtn').classList.remove('hide');
+  fillSettings();refresh();loadMedia();
+  clearInterval(window._rf);window._rf=setInterval(refresh,30000);
+}
+async function logout(){try{await api('logout')}catch(e){} TOKEN='';localStorage.removeItem('st_token');boot()}
+function showTab(t){
+  document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+  document.getElementById('t-cal').classList.toggle('hide',t!=='cal');document.getElementById('t-admin').classList.toggle('hide',t!=='admin');
+}
+
+// ---------- calendar & history ----------
+async function refresh(){
+  const r=await api('overview');POSTS=r.posts;render(r.now);
+}
+function badges(p){
+  return p.platforms.map(x=>x==='facebook'?'<span class="badge b-fb">FB</span>':'<span class="badge b-ig">IG</span>').join('');
+}
+function render(nowIso){
+  const now=new Date(nowIso);
+  const upcoming=POSTS.filter(p=>new Date(p.scheduled_at)>=now||p.status==='scheduled'||p.status==='publishing');
+  const past=POSTS.filter(p=>!upcoming.includes(p)).reverse();
+  document.getElementById('stUp').textContent=POSTS.filter(p=>p.status==='scheduled').length;
+  document.getElementById('stPosted').textContent=POSTS.filter(p=>p.status==='posted'||p.status==='partial').length;
+  document.getElementById('stFail').textContent=POSTS.filter(p=>p.status==='failed').length;
+  document.getElementById('stConn').innerHTML=SETTINGS.token_saved?(SETTINGS.page_name?'✅ '+esc(SETTINGS.page_name):'🔑 Token saved'):'<span class="err">Not set up</span>';
+  // calendar: 5 days back + today + 24 days ahead = 30 days
+  const cal=document.getElementById('cal');let h='';
+  ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(d=>h+=`<div class="dow">${d}</div>`);
+  const todayKey=istKey(now);
+  const start=new Date(now.getTime()-5*86400000);
+  const wd=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].indexOf(fmt(start,{weekday:'short'}));
+  for(let i=0;i<wd;i++) h+='<div class="day blank"></div>';
+  const byDay={};POSTS.forEach(p=>{(byDay[istKey(p.scheduled_at)]??=[]).push(p)});
+  for(let i=-5;i<=24;i++){
+    const d=new Date(now.getTime()+i*86400000), k=istKey(d);
+    const list=(byDay[k]||[]);
+    h+=`<div class="day ${k===todayKey?'today':''} ${i<0?'past':''}" ${i<0?'':`onclick="openNew('${d.toISOString()}')"`}><div class="d"><b>${fmt(d,{day:'numeric'})}</b><span>${fmt(d,{weekday:'short'})} · ${fmt(d,{month:'short'})}${k===todayKey?' · Today':''}</span></div>`+
+      list.map(p=>`<span class="chip ${p.status}" onclick="event.stopPropagation();openPost('${p.id}')">${tm(p.scheduled_at)} ${p.platforms.map(x=>x==='facebook'?'FB':'IG').join('+')} · ${esc(p.title||p.media?.title||'Post')}</span>`).join('')+(list.length?'':'<span class="add">No posts · tap to add</span>')+'</div>';
+  }
+  cal.innerHTML=h;
+  document.getElementById('calRange').textContent=`${fmt(start,{day:'numeric',month:'short'})} → ${fmt(new Date(now.getTime()+24*86400000),{day:'numeric',month:'short',year:'numeric'})} · last 5 days + next 24 days · India time (IST)`;
+  // history
+  const hb=document.getElementById('hist');
+  hb.innerHTML=past.map(p=>`<tr onclick="openPost('${p.id}')" style="cursor:pointer">
+    <td>${p.media?(p.media.kind==='video'?`<video class="thumb" src="${prev(p.media.public_url)}#t=1" playsinline muted preload="metadata"></video>`:`<img class="thumb" src="${p.media.public_url}">`):''}</td>
+    <td>${fmt(p.scheduled_at,{day:'numeric',month:'short'})}<br><span class="note">${tm(p.scheduled_at)}</span></td>
+    <td><b>${esc(p.title||p.media?.title||'Post')}</b>${(p.collaborators&&p.collaborators.length)?` <span class="note">🤝 ${p.collaborators.map(u=>'@'+esc(u)).join(', ')}</span>`:''}<br><span class="note">${esc((p.caption||'').slice(0,70))}</span>${p.error?`<br><span class="err">${esc(p.error)}</span>`:''}</td>
+    <td>${p.platforms.includes('facebook')?(p.fb_link?`<a href="${p.fb_link}" target="_blank">✅ View</a>`:(p.fb_status==='failed'?'❌':'—')):'<span class="note">—</span>'}</td>
+    <td>${p.platforms.includes('instagram')?(p.ig_link?`<a href="${p.ig_link}" target="_blank">✅ View</a>`:(p.ig_status==='failed'?'❌':p.ig_status==='posted'?'✅':'—')):'<span class="note">—</span>'}</td>
+    <td class="hide-sm"><span class="badge s-${p.status}">${p.status}</span></td></tr>`).join('');
+  document.getElementById('histEmpty').classList.toggle('hide',past.length>0);
+}
+function closeModal(){document.getElementById('modal').classList.remove('on')}
+function openPost(id){
+  const p=POSTS.find(x=>x.id===id);if(!p)return;
+  const m=p.media;
+  document.getElementById('mbox').innerHTML=`<h2 style="margin-top:0">${esc(p.title||m?.title||'Post')}</h2>
+   <p>${badges(p)} <span class="badge s-${p.status}">${p.status}</span></p>
+   <p class="note">${fmt(p.scheduled_at,{weekday:'long',day:'numeric',month:'long',year:'numeric'})} · ${tm(p.scheduled_at)} IST</p>
+   ${p.status==='scheduled'?`<label>🤝 Collab with (Instagram usernames, comma separated, max 3)</label>
+   <div style="display:flex;gap:8px"><input id="eCollab" value="${esc((p.collaborators||[]).join(', '))}" placeholder="e.g. friend.account, partner_shop"><button class="btn sm" onclick="saveCollab('${p.id}')">Save</button></div>
+   <p class="note">Invites are sent when the post goes live. Accounts must be public.</p>`:((p.collaborators&&p.collaborators.length)?`<p class="note">🤝 Collab with: ${p.collaborators.map(u=>'@'+esc(u)).join(', ')}</p>`:'')}
+   ${m?(m.kind==='video'?`<video src="${prev(m.public_url)}" controls playsinline style="width:100%;max-height:420px;border-radius:14px;background:#000"></video>`:`<img src="${m.public_url}" style="width:100%;border-radius:14px">`):'<p class="err">Media missing</p>'}
+   <label>Caption</label><div style="white-space:pre-wrap;background:#0a120d;border:1px solid var(--line);border-radius:12px;padding:10px;font-size:13px">${esc(p.caption)}</div>
+   ${p.fb_link?`<p>Facebook: <a href="${p.fb_link}" target="_blank">open post</a></p>`:''}${p.ig_link?`<p>Instagram: <a href="${p.ig_link}" target="_blank">open post</a></p>`:''}
+   ${p.error?`<p class="err">${esc(p.error)}</p>`:''}
+   <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">
+    ${p.status==='scheduled'?`<button class="btn gold" onclick="act('post_now','${p.id}')">Post now</button><button class="btn red" onclick="act('cancel_post','${p.id}')">Cancel post</button>`:''}
+    ${['failed','partial'].includes(p.status)?`<button class="btn" onclick="act('retry_post','${p.id}')">Retry failed</button>`:''}
+    <button class="btn o" onclick="closeModal()">Close</button></div>`;
+  document.getElementById('modal').classList.add('on');
+}
+async function saveCollab(id){
+  const list=document.getElementById('eCollab').value.split(',').map(x=>x.trim().replace(/^@/,'')).filter(Boolean);
+  if(list.length>3){toast('Maximum 3 usernames');return}
+  try{await api('update_post',{id,collaborators:list});toast('Collab saved ✅');await refresh();openPost(id)}catch(e){toast(e.message)}
+}
+async function act(a,id){
+  if(a==='cancel_post'&&!confirm('Cancel this scheduled post?'))return;
+  try{await api(a,{id});toast(a==='post_now'?'Publishing… check status in a minute':'Done');closeModal();refresh()}catch(e){toast(e.message)}
+}
+function toLocalInput(d){
+  const p=new Intl.DateTimeFormat('en-CA',{timeZone:TZ,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}).formatToParts(d);
+  const g=t=>p.find(x=>x.type===t).value;return `${g('year')}-${g('month')}-${g('day')}T${g('hour')==='24'?'00':g('hour')}:${g('minute')}`;
+}
+let pickMedia=null;
+async function openNew(dayIso){
+  if(!MEDIA.length) await loadMedia();
+  let d=dayIso?new Date(dayIso):new Date(Date.now()+3600000);
+  if(dayIso){const k=istKey(d);if(k===istKey(new Date()))d=new Date(Date.now()+3600000);else d=new Date(k.split('/').reverse().join('-')+'T19:00:00+05:30')}
+  pickMedia=null;
+  document.getElementById('mbox').innerHTML=`<h2 style="margin-top:0">New post</h2>
+   <label>1. Choose media ${MEDIA.length?'':'<span class="err">— upload first in Admin → Media library</span>'}</label>
+   <div class="media-grid" style="grid-template-columns:repeat(auto-fill,minmax(110px,1fr))">${MEDIA.map(m=>`<div class="m" id="pm-${m.id}" onclick="selMedia('${m.id}')">${m.kind==='video'?`<video src="${prev(m.public_url)}#t=1" muted playsinline preload="metadata" style="height:150px"></video>`:`<img src="${m.public_url}" style="height:150px">`}<div>${esc(m.title||m.kind)}</div></div>`).join('')}</div>
+   <label>2. Title (for calendar)</label><input id="nTitle">
+   <label>3. Caption</label><textarea id="nCap">${esc(SETTINGS.default_caption||'')}</textarea>
+   <label>4. Platforms</label><div class="checks"><label><input type="checkbox" id="nFb" checked> Facebook</label><label><input type="checkbox" id="nIg" checked> Instagram</label></div>
+   <label>5. Date & time (IST)</label><input type="datetime-local" id="nWhen" value="${toLocalInput(d)}">
+   <label>6. Collab with (Instagram usernames, comma separated, max 3 — optional)</label><input id="nCollab" placeholder="e.g. friend.account, partner_shop, another.user">
+   <p class="note">They will get a collab invite on Instagram. After they accept, the post shows on their profile too. Accounts must be public. (Facebook has no collab.)</p>
+   <p class="err" id="nErr"></p>
+   <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn gold" onclick="createPost(false)">Schedule</button><button class="btn" onclick="createPost(true)">Post now</button><button class="btn o" onclick="closeModal()">Close</button></div>`;
+  document.getElementById('modal').classList.add('on');
+}
+function selMedia(id){pickMedia=id;document.querySelectorAll('[id^=pm-]').forEach(e=>e.classList.toggle('sel',e.id==='pm-'+id));
+  const m=MEDIA.find(x=>x.id===id);if(m&&!document.getElementById('nTitle').value)document.getElementById('nTitle').value=m.title||''}
+async function createPost(now){
+  const e=document.getElementById('nErr');e.textContent='';
+  try{
+    if(!pickMedia) throw new Error('Choose a video or image');
+    const platforms=[];if(document.getElementById('nFb').checked)platforms.push('facebook');if(document.getElementById('nIg').checked)platforms.push('instagram');
+    const when=now?new Date().toISOString():new Date(document.getElementById('nWhen').value+':00+05:30').toISOString();
+    const collab=document.getElementById('nCollab').value.split(',').map(x=>x.trim().replace(/^@/,'')).filter(Boolean);
+    if(collab.length>3) throw new Error('Maximum 3 collab usernames');
+    const p=await api('create_post',{media_id:pickMedia,title:document.getElementById('nTitle').value,caption:document.getElementById('nCap').value,platforms,scheduled_at:when,collaborators:collab});
+    if(now) await api('post_now',{id:p.id});
+    toast(now?'Publishing now…':'Scheduled ✅');closeModal();refresh();
+  }catch(x){e.textContent=x.message}
+}
+
+// ---------- admin ----------
+function fillSettings(){
+  sPage.value=SETTINGS.page_id||'';sIg.value=SETTINGS.ig_user_id||'';sVer.value=SETTINGS.graph_version||'v23.0';sCap.value=SETTINGS.default_caption||'';
+  tokHint.textContent=SETTINGS.token_saved?`(saved ${SETTINGS.token_hint})`:'';
+  sWho.value=[SETTINGS.page_name,SETTINGS.ig_username&&('@'+SETTINGS.ig_username)].filter(Boolean).join(' · ')||'Not tested yet';
+}
+async function saveSettings(){
+  try{await api('save_settings',{page_id:sPage.value,ig_user_id:sIg.value,graph_version:sVer.value||'v23.0',default_caption:sCap.value,page_token:sTok.value});
+    sTok.value='';SETTINGS=await api('get_settings');fillSettings();toast('Saved ✅')}catch(e){toast(e.message)}
+}
+async function testConn(){
+  connRes.textContent='Testing…';
+  try{const r=await api('test_connection');connRes.textContent=`Facebook: ${r.facebook}\nInstagram: ${r.instagram}`;SETTINGS=await api('get_settings');fillSettings();refresh()}
+  catch(e){connRes.textContent='❌ '+e.message}
+}
+async function loadMedia(){
+  MEDIA=await api('list_media');
+  mediaGrid.innerHTML=MEDIA.map(m=>`<div class="m">${m.kind==='video'?`<video src="${prev(m.public_url)}#t=1" controls playsinline preload="metadata"></video>`:`<img src="${m.public_url}">`}
+   <div><b>${esc(m.title||'Untitled')}</b><br><span class="note">${fmt(m.created_at,{day:'numeric',month:'short'})} · ${m.size_bytes?(m.size_bytes/1048576).toFixed(1)+' MB':''}</span><br>
+   <button class="btn red sm" style="margin-top:6px" onclick="delMedia('${m.id}')">Delete</button></div></div>`).join('')||'<p class="note">No files yet.</p>';
+}
+async function delMedia(id){if(!confirm('Delete this file?'))return;try{await api('delete_media',{id});loadMedia()}catch(e){toast(e.message)}}
+async function upload(f){
+  if(!f)return;const kind=f.type.startsWith('image')?'image':'video';
+  if(f.size>50*1048576){upMsg.textContent='File is larger than 50 MB';return}
+  upMsg.textContent='Uploading '+f.name+'…';bar.style.display='block';bar.firstElementChild.style.width='0';
+  try{
+    const u=await api('upload_url',{filename:f.name,kind});
+    await new Promise((res,rej)=>{const x=new XMLHttpRequest();x.open('PUT',u.signed_url);
+      x.upload.onprogress=e=>{if(e.lengthComputable)bar.firstElementChild.style.width=(e.loaded/e.total*100)+'%'};
+      x.onload=()=>x.status<300?res():rej(new Error('Upload failed '+x.status+' '+x.responseText));x.onerror=()=>rej(new Error('Network error'));
+      const fd=new FormData();fd.append('cacheControl','3600');fd.append('',f);x.send(fd)});
+    await api('register_media',{path:u.path,kind,title:upTitle.value||f.name.replace(/\.[^.]+$/,''),size:f.size});
+    upMsg.textContent='✅ Uploaded';upTitle.value='';file.value='';loadMedia();
+  }catch(e){upMsg.textContent='❌ '+e.message}
+  setTimeout(()=>bar.style.display='none',1500);
+}
+async function changePw(){
+  try{await api('change_password',{old:cpOld.value,password:cpNew.value});cpMsg.textContent='✅ Changed. Please login again.';setTimeout(logout,1200)}catch(e){cpMsg.textContent='❌ '+e.message}
+}
+boot();
+</script>
+</body>
+</html>
