@@ -41,3 +41,6 @@ Re-cutting from the source audio instead (rule: keep up to "फॉलो कर�
 - "Shri Tech" + ☎ 9993615146 under the subtitles for the whole video (animated), in the top bar and on the end card.
 - A thumbnail for every reel (also the first 0.5 s of the video).
 - Use ShriTech website screenshots in the visuals.
+
+## Session handover
+`ShriTech_Session_Handover.docx` — complete A-to-Z state of the project (upload it to a new Claude session to continue).
