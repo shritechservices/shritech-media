@@ -44,6 +44,9 @@ def parse(txt, size, color=INK, accent=GREEN, font=PB):
         else: out.append((part.strip(), size, color, font))
     return out
 
+def card(img, box, r, ol=None):
+    rrect(img, box, r, fill=WHITE, outline=ol or CARD_OL, width=2)
+
 # ---------------- page frame ----------------
 def base():
     img = Image.new('RGB', (W, H), WHITE)
@@ -289,7 +292,7 @@ def dg_steps3(img, d):
     n = len(d['steps'])
     for i, (ic, a) in enumerate(d['steps']):
         y0 = top + i * (ch + gap); yc = y0 + ch / 2
-        rrect(img, (X0, y0, X1, y0 + ch), 24, fill=WHITE, outline=CARD_OL, width=2)
+        card(img, (X0, y0, X1, y0 + ch), 24)
         node(img, X0 + 64, yc, 34, ic)
         text(img, (X0 + 118, yc), a, fit(a, 27, PB, X1 - X0 - 210), INK, PB, 'lm')
         bx = X1 - 50
@@ -359,7 +362,7 @@ def dg_fanout(img, d):
             L(img).polygon(P((xs[i + 1] - 70, yc - 31), (xs[i + 1] - 56, yc - 20), (xs[i + 1] - 70, yc - 9)), fill=GREEN)
     for y, (ic, lab) in zip(ys, d['outs']):
         dashed(img, bez((588, yc - 20), (680, yc - 20), (760, y)), LINEC, w=3, dash=10, gap=8)
-        rrect(img, (760, y - 44, 1080 - M, y + 44), 44, fill=WHITE, outline=CARD_OL, width=2)
+        card(img, (760, y - 44, 1080 - M, y + 44), 44)
         node(img, 806, y, 38, ic)
         text(img, (858, y), lab, fit(lab, 24, PB, 170), INK, PB, 'lm')
 
@@ -405,7 +408,7 @@ def dg_window(img, d):
     cw = (1080 - 2 * M - 24) / 2
     for i, (ic, t1, t2) in enumerate([('chat', d['open_t'], d['open_b']), ('tmpl', d['closed_t'], d['closed_b'])]):
         cx0 = M + i * (cw + 24)
-        rrect(img, (cx0, 914, cx0 + cw, 1080), 24, fill=WHITE, outline=CARD_OL if i else GREEN, width=2 if i else 3)
+        card(img, (cx0, 914, cx0 + cw, 1080), 24, GREEN if not i else None)
         node(img, cx0 + 60, 966, 36, ic)
         text(img, (cx0 + 110, 954), t1, fit(t1, 24, PB, cw - 130), INK, PB, 'lm')
         text(img, (cx0 + 110, 986), t2, fit(t2, 18, PM, cw - 130), SUB, PM, 'lm')
@@ -448,7 +451,7 @@ def dg_tiles(img, d):
     tw_ = (1080 - 2 * M - gap * (n - 1)) / n
     for i, (ic, a, b) in enumerate(d['tiles']):
         x0 = M + i * (tw_ + gap)
-        rrect(img, (x0, 740, x0 + tw_, 966), 24, fill=WHITE, outline=CARD_OL, width=2)
+        card(img, (x0, 740, x0 + tw_, 966), 24)
         node(img, x0 + tw_ / 2, 806, 44, ic, num=i + 1 if d.get('num') else None)
         text(img, (x0 + tw_ / 2, 880), a, fit(a, 23, PB, tw_ - 20), INK, PB, 'mm')
         text(img, (x0 + tw_ / 2, 914), b, fit(b, 17, PM, tw_ - 16), SUB, PM, 'mm')
@@ -467,7 +470,7 @@ def dg_dash(img, d):
     heading(img, d['head'], 690, X0, 'l', 29)
     for i, (a, b) in enumerate(d['items']):
         y0 = 740 + i * 86; yc = y0 + 38
-        rrect(img, (X0, y0, X1, y0 + 76), 22, fill=WHITE, outline=CARD_OL, width=2)
+        card(img, (X0, y0, X1, y0 + 76), 22)
         L(img).ellipse(P((X0 + 20, yc - 22), (X0 + 64, yc + 22)), fill=GREEN)
         text(img, (X0 + 42, yc + 1), str(i + 1), 22, WHITE, PB, 'mm')
         text(img, (X0 + 84, yc - 13), a, fit(a, 24, PB, X1 - X0 - 110), INK, PB, 'lm')

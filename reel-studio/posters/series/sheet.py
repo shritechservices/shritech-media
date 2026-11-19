@@ -1,6 +1,6 @@
 import glob,sys
 from PIL import Image
-fs=sorted(glob.glob('out/*.jpg'))
+fs=sorted(glob.glob(sys.argv[1] if len(sys.argv)>1 else 'out/*.jpg'))
 per=6
 for k in range(0,len(fs),per):
     ims=[Image.open(f).resize((540,675)) for f in fs[k:k+per]]
