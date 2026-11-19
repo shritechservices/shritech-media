@@ -31,7 +31,7 @@ main{max-width:1180px;margin:0 auto;padding:18px}
 .stat{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px}
 .stat b{display:block;font-size:28px;color:var(--g)}.stat span{color:var(--mut);font-size:13px}
 .stat.gold b{color:var(--gold)}.stat.red b{color:var(--red)}
-.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px}
 .dow{color:var(--mut);font-size:12px;text-align:center;padding-bottom:2px}
 .day{min-height:96px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:7px;cursor:pointer;transition:.15s}
 .day:hover{border-color:var(--g)}
@@ -39,12 +39,16 @@ main{max-width:1180px;margin:0 auto;padding:18px}
 .day.past{opacity:.55;cursor:default}
 .day.blank{background:transparent;border:0;cursor:default}
 .day.old{opacity:.3}
-.day .d{font-size:12px;color:var(--mut);display:flex;justify-content:space-between}
+.day{min-width:0;overflow:hidden}
+.day .d{font-size:12px;color:var(--mut);display:flex;justify-content:space-between;gap:4px;white-space:nowrap}
+.day .d span{overflow:hidden;text-overflow:ellipsis;min-width:0}
 .day .d b{color:var(--txt);font-size:15px}
 .chip{display:block;margin-top:5px;font-size:11px;padding:4px 6px;border-radius:8px;background:#0f2a1a;border-left:3px solid var(--g);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .chip.posted{border-color:var(--g);background:#0d2617}.chip.failed{border-color:var(--red);background:#2a1111}
 .chip.partial{border-color:var(--gold);background:#2a2408}.chip.publishing{border-color:var(--blue);background:#0d1a2e}
 .chip.cancelled{opacity:.45;text-decoration:line-through}
+.chip{white-space:normal;cursor:pointer}.chip .ct{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chip .cn{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word;opacity:.9;margin-top:1px}
 .badge{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;margin-right:4px;border:1px solid}
 .b-fb{color:#60a5fa;border-color:#1e40af}.b-ig{color:#f472b6;border-color:#9d174d}
 .s-scheduled{color:var(--g);border-color:var(--g2)}.s-posted{color:#4ade80;border-color:#166534}.s-failed{color:#f87171;border-color:#991b1b}
@@ -61,6 +65,8 @@ textarea{min-height:110px;resize:vertical}
 .checks{display:flex;gap:16px;margin-top:6px}.checks label{display:flex;gap:8px;align-items:center;color:var(--txt);margin:0}
 .checks input{width:auto}
 .note{font-size:12px;color:var(--mut)}
+.hcap{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word;white-space:normal;max-width:440px}
+#histT td.post{max-width:460px;word-break:break-word}
 .ok{color:#4ade80}.err{color:#f87171}
 .res{white-space:pre-wrap;font-size:13px;margin-top:10px}
 .media-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-top:14px}
@@ -89,7 +95,14 @@ details ol{padding-left:20px;line-height:1.7;font-size:13px;color:var(--txt)}
  .day .add{display:block}.day.past .add{display:none}.day.past:not(.today):not(:has(.chip)){display:none}
  .chip{font-size:13px;padding:7px 9px;white-space:normal}
  .stats{grid-template-columns:1fr 1fr}.stat b{font-size:22px}
- table{font-size:12px}.thumb{width:44px;height:60px}}
+ table{font-size:12px}.thumb{width:44px;height:60px}
+ #histT thead{display:none}
+ #histT tr{display:grid;grid-template-columns:52px minmax(0,1fr);column-gap:10px;row-gap:3px;padding:10px 0;border-bottom:1px solid var(--line)}
+ #histT td{border:0;padding:0;max-width:none}
+ #histT td.th{grid-row:1 / span 4}
+ #histT td.when{font-size:12px}#histT td.when br{display:none}#histT td.when .note{margin-left:6px}
+ #histT td.plat{font-size:12px}#histT td.plat::before{content:attr(data-l);color:var(--mut)}
+ .hcap{max-width:none}}
 </style>
 </head>
 <body>
@@ -137,7 +150,7 @@ details ol{padding-left:20px;line-height:1.7;font-size:13px;color:var(--txt)}
     <div class="card">
       <h2>History — last 30 days</h2>
       <p class="sub">Posts older than 30 days are removed automatically to save space.</p>
-      <div style="overflow-x:auto"><table><thead><tr><th></th><th>When (IST)</th><th>Post</th><th>Facebook</th><th>Instagram</th><th class="hide-sm">Status</th></tr></thead><tbody id="hist"></tbody></table></div>
+      <div style="overflow-x:auto"><table id="histT"><thead><tr><th></th><th>When (IST)</th><th>Post</th><th>Facebook</th><th>Instagram</th><th class="hide-sm">Status</th></tr></thead><tbody id="hist"></tbody></table></div>
       <p class="note" id="histEmpty">No posts yet.</p>
     </div>
   </section>
@@ -301,7 +314,7 @@ function render(nowIso){
     const tooOld=dayEnd<=cutoff;
     const list=(byDay[k]||[]);
     h+=`<div class="day ${k===todayKey?'today':''} ${isPast?'past':''} ${tooOld&&!list.length?'old':''}" ${isPast?'':`onclick="openNew('${d.toISOString()}')"`}><div class="d"><b>${fmt(d,{day:'numeric'})}</b><span>${fmt(d,{weekday:'short'})} · ${fmt(d,{month:'short'})}${k===todayKey?' · Today':''}</span></div>`+
-      list.map(p=>`<span class="chip ${p.status}" onclick="event.stopPropagation();openPost('${p.id}')">${p.media?(p.media.kind==='video'?'🎬':'🖼️'):''} ${tm(p.scheduled_at)} ${p.platforms.map(x=>x==='facebook'?'FB':'IG').join('+')} · ${esc(p.title||p.media?.title||'Post')}</span>`).join('')+(list.length?'':'<span class="add">No posts · tap to add</span>')+'</div>';
+      list.map(p=>`<span class="chip ${p.status}" onclick="event.stopPropagation();openPost('${p.id}')"><span class="ct">${p.media?(p.media.kind==='video'?'🎬':'🖼️'):''} ${tm(p.scheduled_at)} · ${p.platforms.map(x=>x==='facebook'?'FB':'IG').join('+')}</span><span class="cn">${esc(p.title||p.media?.title||'Post')}</span></span>`).join('')+(list.length?'':'<span class="add">No posts · tap to add</span>')+'</div>';
   }
   cal.innerHTML=h;
   document.getElementById('mLabel').textContent=fmt(new Date(ms.getTime()+6*3600000),{month:'long',year:'numeric'});
@@ -312,11 +325,11 @@ function render(nowIso){
   // history
   const hb=document.getElementById('hist');
   hb.innerHTML=past.map(p=>`<tr onclick="openPost('${p.id}')" style="cursor:pointer">
-    <td>${p.media?(p.media.kind==='video'?`<video class="thumb" src="${prev(p.media.public_url)}#t=1" playsinline muted preload="metadata"></video>`:`<img class="thumb" src="${p.media.public_url}">`):''}</td>
-    <td>${fmt(p.scheduled_at,{day:'numeric',month:'short'})}<br><span class="note">${tm(p.scheduled_at)}</span></td>
-    <td><b>${esc(p.title||p.media?.title||'Post')}</b>${(p.collaborators&&p.collaborators.length)?` <span class="note">🤝 ${p.collaborators.map(u=>'@'+esc(u)).join(', ')}</span>`:''}<br><span class="note">${esc((p.caption||'').slice(0,70))}</span>${p.error?`<br><span class="err">${esc(p.error)}</span>`:''}</td>
-    <td>${p.platforms.includes('facebook')?(p.fb_link?`<a href="${p.fb_link}" target="_blank">✅ View</a>`:(p.fb_status==='failed'?'❌':'—')):'<span class="note">—</span>'}</td>
-    <td>${p.platforms.includes('instagram')?(p.ig_link?`<a href="${p.ig_link}" target="_blank">✅ View</a>`:(p.ig_status==='failed'?'❌':p.ig_status==='posted'?'✅':'—')):'<span class="note">—</span>'}</td>
+    <td class="th">${p.media?(p.media.kind==='video'?`<video class="thumb" src="${prev(p.media.public_url)}#t=1" playsinline muted preload="metadata"></video>`:`<img class="thumb" src="${p.media.public_url}">`):''}</td>
+    <td class="when">${fmt(p.scheduled_at,{day:'numeric',month:'short'})}<br><span class="note">${tm(p.scheduled_at)}</span></td>
+    <td class="post"><b>${esc(p.title||p.media?.title||'Post')}</b>${(p.collaborators&&p.collaborators.length)?` <span class="note">🤝 ${p.collaborators.map(u=>'@'+esc(u)).join(', ')}</span>`:''}<span class="note hcap">${esc((p.caption||'').replace(/\s+/g,' ').slice(0,160))}</span>${p.error?`<br><span class="err">${esc(p.error)}</span>`:''}</td>
+    <td class="plat" data-l="Facebook: ">${p.platforms.includes('facebook')?(p.fb_link?`<a href="${p.fb_link}" target="_blank">✅ View</a>`:(p.fb_status==='failed'?'❌':'—')):'<span class="note">—</span>'}</td>
+    <td class="plat" data-l="Instagram: ">${p.platforms.includes('instagram')?(p.ig_link?`<a href="${p.ig_link}" target="_blank">✅ View</a>`:(p.ig_status==='failed'?'❌':p.ig_status==='posted'?'✅':'—')):'<span class="note">—</span>'}</td>
     <td class="hide-sm"><span class="badge s-${p.status}">${p.status}</span></td></tr>`).join('');
   document.getElementById('histEmpty').classList.toggle('hide',past.length>0);
 }
