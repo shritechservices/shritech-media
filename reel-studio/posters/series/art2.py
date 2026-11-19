@@ -201,3 +201,56 @@ def poly_g(img, pts, fill=None, out=K, w=SW):
     if out: _poly0(img, pts, None, out, w)
 
 _art.rect, _art.el, _art.poly = rect_g, el_g, poly_g
+
+# ---- Republic Day: tricolour on the gate (national flag keeps its real colours) ----
+_rep0 = ART['republic']
+def a_republic_flag(img):
+    _rep0(img)
+    x, top = 540, 40
+    ln(img, [(x, 92), (x, top)], K, 4)
+    for i, c in enumerate([(255, 153, 51), (255, 255, 255), (19, 136, 8)]):
+        gshape(img, lambda d, i=i: d.rectangle(P((x + 2, top + i * 14), (x + 78, top + 14 + i * 14)), fill=255), lighten(c, .15), darken(c, .08), 0.2)
+    D(img).rectangle(P((x + 2, top), (x + 78, top + 42)), outline=K, width=int(2 * S))
+    el(img, x + 40, top + 21, 6, fill=None, out=(0, 0, 128), w=2)
+    for xx in (250, 830):
+        ln(img, [(xx, 200), (xx, 150)], K, 3)
+        for i, c in enumerate([(255, 153, 51), (255, 255, 255), (19, 136, 8)]):
+            D(img).rectangle(P((xx + 2, 150 + i * 9), (xx + 50, 159 + i * 9)), fill=c)
+ART['republic'] = a_republic_flag
+
+# ---- Shivaji Maharaj: royal profile silhouette (pagdi, plume, beard) in front of the fort ----
+def a_shivaji2(img):
+    sunburst(img, 540, 250, 110, 330, 30, (250, 214, 60), 0.5)
+    gel(img, 540, 250, 150, 150, ((255, 251, 225), (253, 224, 71)), out=None, sheen=0.4)
+    # fort on both sides
+    for x0, x1, top in [(110, 330, 300), (750, 970, 300)]:
+        gpoly(img, [(x0, top), (x1, top), (x1, 404), (x0, 404)], ((254, 249, 195), (240, 200, 70)), K, 4)
+        for x in range(int(x0) + 6, int(x1) - 10, 36):
+            gpoly(img, [(x, top - 20), (x + 20, top - 20), (x + 20, top), (x, top)], ((254, 249, 195), (240, 200, 70)), K, 3)
+    flag(img, 900, 150, 300)
+    cx = 0
+    sil = ((40, 140, 75), (6, 46, 25))
+    # shoulders / angrakha
+    gshape(img, lambda d: d.chord(P((400, 320), (690, 520)), 180, 360, fill=255), *sil, 0.3)
+    gpoly(img, [(400, 420), (690, 420), (690, 410), (400, 410)], sil, None)
+    gpoly(img, [(470, 360), (520, 360), (600, 420), (540, 420)], GOLDG, None)          # sash
+    # neck + face profile (facing right)
+    face = [(492, 236), (505, 186), (588, 186), (596, 210), (618, 238), (600, 246), (604, 258), (596, 266),
+            (598, 300), (578, 334), (552, 344), (530, 330), (522, 318), (496, 300)]
+    gpoly(img, face, sil, (217, 159, 6), 3)
+    # beard / moustache highlight lines
+    ln(img, bez((604, 258), (586, 262), (566, 254), 10), (217, 159, 6), 3)
+    ln(img, bez((596, 280), (570, 300), (552, 340), 10), (217, 159, 6), 2)
+    el(img, 574, 214, 4, fill=(254, 240, 138), out=None)
+    # pagdi (turban) + plume (kalgi)
+    gshape(img, lambda d: d.ellipse(P((468, 96), (616, 216)), fill=255), *GOLDG, 0.45)
+    gshape(img, lambda d: d.polygon(P((560, 100), (612, 120), (626, 170), (600, 176)), fill=255), *GOLDG, 0.45)
+    for k in range(4): ln(img, bez((480, 150 + k * 14), (545, 130 + k * 16), (608, 160 + k * 12), 12), (180, 120, 5), 2)
+    gpoly(img, [(470, 176), (612, 176), (612, 196), (470, 196)], ((52, 211, 110), (21, 128, 61)), K, 2)
+    gel(img, 596, 150, 12, 12, ((255, 255, 255), (220, 230, 225)), K, 2)
+    ln(img, bez((604, 130), (660, 80), (620, 30), 14), (254, 240, 138), 12)
+    ln(img, bez((604, 130), (660, 80), (620, 30), 14), (217, 159, 6), 3)
+    # sword in front
+    ln(img, bez((660, 470), (700, 360), (760, 250), 16), (200, 210, 205), 8)
+    ln(img, [(640, 470), (690, 470)], GOLDG[1], 8)
+ART['shivaji'] = a_shivaji2
