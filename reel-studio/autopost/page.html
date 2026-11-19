@@ -38,6 +38,7 @@ main{max-width:1180px;margin:0 auto;padding:18px}
 .day.today{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset}
 .day.past{opacity:.55;cursor:default}
 .day.blank{background:transparent;border:0;cursor:default}
+.day.old{opacity:.3}
 .day .d{font-size:12px;color:var(--mut);display:flex;justify-content:space-between}
 .day .d b{color:var(--txt);font-size:15px}
 .chip{display:block;margin-top:5px;font-size:11px;padding:4px 6px;border-radius:8px;background:#0f2a1a;border-left:3px solid var(--g);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -85,7 +86,7 @@ details ol{padding-left:20px;line-height:1.7;font-size:13px;color:var(--txt)}
  .cal{grid-template-columns:1fr;gap:8px}.dow,.day.blank{display:none}
  .day{min-height:0;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
  .day .d{font-size:13px}.day .d b{font-size:16px}
- .day .add{display:block}.day.past .add{display:none}
+ .day .add{display:block}.day.past .add{display:none}.day.past:not(.today):not(:has(.chip)){display:none}
  .chip{font-size:13px;padding:7px 9px;white-space:normal}
  .stats{grid-template-columns:1fr 1fr}.stat b{font-size:22px}
  table{font-size:12px}.thumb{width:44px;height:60px}}
@@ -126,7 +127,8 @@ details ol{padding-left:20px;line-height:1.7;font-size:13px;color:var(--txt)}
     </div>
     <div class="card">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <div><h2>30-day calendar</h2><p class="sub" id="calRange">Times shown in India time (IST)</p></div>
+        <div><h2>Calendar</h2><p class="sub" id="calRange">Times shown in India time (IST)</p></div>
+        <div style="display:flex;gap:6px;align-items:center"><button class="btn o sm" id="mPrev" onclick="moveMonth(-1)">◀</button><b id="mLabel" style="min-width:130px;text-align:center">—</b><button class="btn o sm" id="mNext" onclick="moveMonth(1)">▶</button><button class="btn o sm" onclick="goToday()">Today</button></div>
         <div class="sp"></div>
         <button class="btn gold" onclick="openNew()">+ New post</button>
       </div>
@@ -177,7 +179,7 @@ details ol{padding-left:20px;line-height:1.7;font-size:13px;color:var(--txt)}
     </div>
 
     <div class="card">
-      <h2>Media library</h2>
+      <h2>Media library</h2><p class="sub">Showing this month's files. Older files stay safe on GitHub and in their scheduled posts.</p>
       <p class="sub">Upload reels (MP4, 9:16, max 50 MB) or images (JPG/PNG). Then schedule them from Claude chat or with “New post”.</p>
       <div class="drop" onclick="document.getElementById('file').click()">⬆️ Tap to choose a video or image</div>
       <input type="file" id="file" accept="video/mp4,video/quicktime,image/jpeg,image/png" class="hide" onchange="upload(this.files[0])">
@@ -258,8 +260,18 @@ function showTab(t){
 }
 
 // ---------- calendar & history ----------
+let CUR=null, LAST_AT=null, UPCOMING=0;
+function istYM(d){const p=new Intl.DateTimeFormat('en-CA',{timeZone:TZ,year:'numeric',month:'2-digit'}).formatToParts(new Date(d));return {y:+p.find(x=>x.type==='year').value,m:+p.find(x=>x.type==='month').value-1}}
+function monthStart(y,m){return new Date(Date.UTC(y,m,1)-330*60000)}
+function moveMonth(k){const lim=navLimits();let y=CUR.y,m=CUR.m+k;if(m<0){m=11;y--}if(m>11){m=0;y++}const v=y*12+m;if(v<lim.min||v>lim.max)return;CUR={y,m};refresh()}
+function goToday(){CUR=istYM(Date.now());refresh()}
+function navLimits(){const a=istYM(Date.now()-30*86400000),b=istYM(Date.now());let max=b.y*12+b.m+24;if(LAST_AT){const l=istYM(LAST_AT);max=Math.max(max,l.y*12+l.m)}return {min:a.y*12+a.m,max}}
 async function refresh(){
-  const r=await api('overview');POSTS=r.posts;render(r.now);
+  if(!CUR) CUR=istYM(Date.now());
+  const ms=monthStart(CUR.y,CUR.m), me=monthStart(CUR.m===11?CUR.y+1:CUR.y,(CUR.m+1)%12);
+  const from=new Date(Math.min(ms.getTime(),Date.now()-30*86400000)).toISOString();
+  const to=new Date(Math.max(me.getTime(),Date.now())).toISOString();
+  const r=await api('overview',{from,to});POSTS=r.posts;LAST_AT=r.last_at;UPCOMING=r.upcoming;render(r.now);
 }
 function badges(p){
   return p.platforms.map(x=>x==='facebook'?'<span class="badge b-fb">FB</span>':'<span class="badge b-ig">IG</span>').join('');
@@ -267,27 +279,36 @@ function badges(p){
 function render(nowIso){
   const now=new Date(nowIso);
   const upcoming=POSTS.filter(p=>new Date(p.scheduled_at)>=now||p.status==='scheduled'||p.status==='publishing');
-  const past=POSTS.filter(p=>!upcoming.includes(p)).reverse();
-  document.getElementById('stUp').textContent=POSTS.filter(p=>p.status==='scheduled').length;
+  const past=POSTS.filter(p=>!upcoming.includes(p)&&new Date(p.scheduled_at).getTime()>=now.getTime()-30*86400000).reverse();
+  document.getElementById('stUp').textContent=UPCOMING;
   document.getElementById('stPosted').textContent=POSTS.filter(p=>p.status==='posted'||p.status==='partial').length;
   document.getElementById('stFail').textContent=POSTS.filter(p=>p.status==='failed').length;
   document.getElementById('stConn').innerHTML=SETTINGS.token_saved?(SETTINGS.page_name?'✅ '+esc(SETTINGS.page_name):'🔑 Token saved'):'<span class="err">Not set up</span>';
-  // calendar: 5 days back + today + 24 days ahead = 30 days
+  // calendar: one month at a time (30 days back … 2 years ahead)
   const cal=document.getElementById('cal');let h='';
   ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(d=>h+=`<div class="dow">${d}</div>`);
   const todayKey=istKey(now);
-  const start=new Date(now.getTime()-5*86400000);
-  const wd=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].indexOf(fmt(start,{weekday:'short'}));
+  const ms=monthStart(CUR.y,CUR.m);
+  const ndays=new Date(Date.UTC(CUR.y,CUR.m+1,0)).getUTCDate();
+  const wd=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].indexOf(fmt(new Date(ms.getTime()+6*3600000),{weekday:'short'}));
   for(let i=0;i<wd;i++) h+='<div class="day blank"></div>';
   const byDay={};POSTS.forEach(p=>{(byDay[istKey(p.scheduled_at)]??=[]).push(p)});
-  for(let i=-5;i<=24;i++){
-    const d=new Date(now.getTime()+i*86400000), k=istKey(d);
+  const cutoff=now.getTime()-30*86400000;
+  for(let i=0;i<ndays;i++){
+    const d=new Date(ms.getTime()+i*86400000+12*3600000), k=istKey(d);
+    const dayEnd=ms.getTime()+(i+1)*86400000;
+    const isPast=k!==todayKey&&dayEnd<=now.getTime();
+    const tooOld=dayEnd<=cutoff;
     const list=(byDay[k]||[]);
-    h+=`<div class="day ${k===todayKey?'today':''} ${i<0?'past':''}" ${i<0?'':`onclick="openNew('${d.toISOString()}')"`}><div class="d"><b>${fmt(d,{day:'numeric'})}</b><span>${fmt(d,{weekday:'short'})} · ${fmt(d,{month:'short'})}${k===todayKey?' · Today':''}</span></div>`+
-      list.map(p=>`<span class="chip ${p.status}" onclick="event.stopPropagation();openPost('${p.id}')">${tm(p.scheduled_at)} ${p.platforms.map(x=>x==='facebook'?'FB':'IG').join('+')} · ${esc(p.title||p.media?.title||'Post')}</span>`).join('')+(list.length?'':'<span class="add">No posts · tap to add</span>')+'</div>';
+    h+=`<div class="day ${k===todayKey?'today':''} ${isPast?'past':''} ${tooOld&&!list.length?'old':''}" ${isPast?'':`onclick="openNew('${d.toISOString()}')"`}><div class="d"><b>${fmt(d,{day:'numeric'})}</b><span>${fmt(d,{weekday:'short'})} · ${fmt(d,{month:'short'})}${k===todayKey?' · Today':''}</span></div>`+
+      list.map(p=>`<span class="chip ${p.status}" onclick="event.stopPropagation();openPost('${p.id}')">${p.media?(p.media.kind==='video'?'🎬':'🖼️'):''} ${tm(p.scheduled_at)} ${p.platforms.map(x=>x==='facebook'?'FB':'IG').join('+')} · ${esc(p.title||p.media?.title||'Post')}</span>`).join('')+(list.length?'':'<span class="add">No posts · tap to add</span>')+'</div>';
   }
   cal.innerHTML=h;
-  document.getElementById('calRange').textContent=`${fmt(start,{day:'numeric',month:'short'})} → ${fmt(new Date(now.getTime()+24*86400000),{day:'numeric',month:'short',year:'numeric'})} · last 5 days + next 24 days · India time (IST)`;
+  document.getElementById('mLabel').textContent=fmt(new Date(ms.getTime()+6*3600000),{month:'long',year:'numeric'});
+  const lim=navLimits(),v=CUR.y*12+CUR.m;
+  document.getElementById('mPrev').disabled=v<=lim.min;document.getElementById('mNext').disabled=v>=lim.max;
+  const inMonth=POSTS.filter(p=>istYM(p.scheduled_at).y===CUR.y&&istYM(p.scheduled_at).m===CUR.m&&p.status==='scheduled').length;
+  document.getElementById('calRange').textContent=`${inMonth} scheduled this month · ${UPCOMING} scheduled in total · use ◀ ▶ to see last 30 days up to 2+ years ahead · India time (IST)`;
   // history
   const hb=document.getElementById('hist');
   hb.innerHTML=past.map(p=>`<tr onclick="openPost('${p.id}')" style="cursor:pointer">
@@ -339,7 +360,7 @@ async function openNew(dayIso){
   if(dayIso){const k=istKey(d);if(k===istKey(new Date()))d=new Date(Date.now()+3600000);else d=new Date(k.split('/').reverse().join('-')+'T19:00:00+05:30')}
   pickMedia=null;
   document.getElementById('mbox').innerHTML=`<h2 style="margin-top:0">New post</h2>
-   <label>1. Choose media ${MEDIA.length?'':'<span class="err">— upload first in Admin → Media library</span>'}</label>
+   <label>1. Choose media <span class="note">(this month's files)</span> ${MEDIA.length?'':'<span class="err">— upload first in Admin → Media library</span>'} <button class="btn o sm" style="margin-left:6px" onclick="showOlder()">Show older files</button></label>
    <div class="media-grid" style="grid-template-columns:repeat(auto-fill,minmax(110px,1fr))">${MEDIA.map(m=>`<div class="m" id="pm-${m.id}" onclick="selMedia('${m.id}')">${m.kind==='video'?`<video src="${prev(m.public_url)}#t=1" muted playsinline preload="metadata" style="height:150px"></video>`:`<img src="${m.public_url}" style="height:150px">`}<div>${esc(m.title||m.kind)}</div></div>`).join('')}</div>
    <label>2. Title (for calendar)</label><input id="nTitle">
    <label>3. Caption</label><textarea id="nCap">${esc(SETTINGS.default_caption||'')}</textarea>
@@ -352,11 +373,19 @@ async function openNew(dayIso){
   document.getElementById('modal').classList.add('on');
 }
 function selMedia(id){pickMedia=id;document.querySelectorAll('[id^=pm-]').forEach(e=>e.classList.toggle('sel',e.id==='pm-'+id));
-  const m=MEDIA.find(x=>x.id===id);if(m&&!document.getElementById('nTitle').value)document.getElementById('nTitle').value=m.title||''}
+  const m=MEDIA.find(x=>x.id===id)||(PICK_ALL||[]).find(x=>x.id===id);if(m&&!document.getElementById('nTitle').value)document.getElementById('nTitle').value=m.title||''}
+async function showOlder(){
+  try{const all=await api('list_media',{all:true});const keep={t:document.getElementById('nTitle').value,c:document.getElementById('nCap').value,w:document.getElementById('nWhen').value,co:document.getElementById('nCollab').value};
+    const saved=MEDIA;MEDIA=all;await openNew();MEDIA=saved;
+    document.getElementById('nTitle').value=keep.t;document.getElementById('nCap').value=keep.c;document.getElementById('nWhen').value=keep.w;document.getElementById('nCollab').value=keep.co;
+    PICK_ALL=all;}catch(e){toast(e.message)}
+}
+let PICK_ALL=null;
 async function createPost(now){
   const e=document.getElementById('nErr');e.textContent='';
   try{
     if(!pickMedia) throw new Error('Choose a video or image');
+    if(!document.getElementById('nCap').value.trim()) throw new Error('Caption is required');
     const platforms=[];if(document.getElementById('nFb').checked)platforms.push('facebook');if(document.getElementById('nIg').checked)platforms.push('instagram');
     const when=now?new Date().toISOString():new Date(document.getElementById('nWhen').value+':00+05:30').toISOString();
     const collab=document.getElementById('nCollab').value.split(',').map(x=>x.trim().replace(/^@/,'')).filter(Boolean);

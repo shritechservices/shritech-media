@@ -148,17 +148,8 @@ async function cleanup() {
   const cutoff = new Date(Date.now() - 30 * DAY).toISOString();
   const { data: old } = await db.from("posts").select("id").lt("scheduled_at", cutoff).in("status", ["posted", "partial", "failed", "cancelled"]);
   if (old?.length) await db.from("posts").delete().in("id", old.map((o) => o.id));
-  // media older than 30 days that no remaining post uses
-  const { data: media } = await db.from("media").select("id,path").lt("created_at", cutoff);
-  let removed = 0;
-  for (const m of media ?? []) {
-    const { count } = await db.from("posts").select("id", { count: "exact", head: true }).eq("media_id", m.id);
-    if (!count) {
-      await db.storage.from("media").remove([m.path]);
-      await db.from("media").delete().eq("id", m.id);
-      removed++;
-    }
-  }
+  // media is never deleted automatically (files stay on GitHub; library shows current month only)
+  const removed = 0;
   await db.from("sessions").delete().lt("expires_at", new Date().toISOString());
   return { posts_removed: old?.length ?? 0, media_removed: removed };
 }
@@ -278,7 +269,13 @@ Deno.serve(async (req) => {
         return json(data);
       }
       case "list_media": {
-        const { data } = await db.from("media").select("*").order("created_at", { ascending: false }).limit(60);
+        let q = db.from("media").select("*").order("created_at", { ascending: false });
+        if (!body.all) {
+          const ist = new Date(Date.now() + 330 * 60000);
+          const start = new Date(Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth(), 1) - 330 * 60000).toISOString();
+          q = q.gte("created_at", start);
+        }
+        const { data } = await q.limit(body.all ? 300 : 120);
         return json(data ?? []);
       }
       case "delete_media": {
@@ -290,16 +287,21 @@ Deno.serve(async (req) => {
         return json({ ok: true });
       }
       case "overview": {
-        const from = new Date(Date.now() - 30 * DAY).toISOString();
-        const to = new Date(Date.now() + 31 * DAY).toISOString();
+        const minFrom = Date.now() - 31 * DAY;
+        const f0 = body.from ? new Date(body.from).getTime() : Date.now() - 30 * DAY;
+        const t0 = body.to ? new Date(body.to).getTime() : Date.now() + 31 * DAY;
+        const from = new Date(Math.max(isNaN(f0) ? minFrom : f0, minFrom)).toISOString();
+        const to = new Date(isNaN(t0) ? Date.now() + 31 * DAY : t0).toISOString();
         const { data } = await db.from("posts").select("*, media(id,kind,public_url,title)")
           .gte("scheduled_at", from).lte("scheduled_at", to).order("scheduled_at");
-        return json({ posts: data ?? [], now: new Date().toISOString() });
+        const { count: upcoming } = await db.from("posts").select("id", { count: "exact", head: true }).eq("status", "scheduled");
+        const { data: last } = await db.from("posts").select("scheduled_at").eq("status", "scheduled").order("scheduled_at", { ascending: false }).limit(1);
+        return json({ posts: data ?? [], now: new Date().toISOString(), upcoming: upcoming ?? 0, last_at: last?.[0]?.scheduled_at ?? null });
       }
       case "create_post": {
         const when = new Date(body.scheduled_at);
         if (isNaN(when.getTime())) return json({ error: "Invalid date" }, 400);
-        if (when.getTime() > Date.now() + 30 * DAY) return json({ error: "Max 30 days ahead" }, 400);
+        if (!String(body.caption ?? "").trim()) return json({ error: "Caption is required" }, 400);
         const platforms = (body.platforms ?? ["facebook", "instagram"]).filter((p: string) => ["facebook", "instagram"].includes(p));
         if (!platforms.length) return json({ error: "Pick at least one platform" }, 400);
         const { data, error } = await db.from("posts").insert({
@@ -312,6 +314,7 @@ Deno.serve(async (req) => {
       }
       case "update_post": {
         const patch: Record<string, unknown> = {};
+        if ("caption" in body && !String(body.caption ?? "").trim()) return json({ error: "Caption is required" }, 400);
         for (const k of ["title", "caption", "scheduled_at", "platforms", "media_id"]) if (k in body) patch[k] = body[k];
         if ("collaborators" in body) patch.collaborators = cleanCollabs(body.collaborators);
         await db.from("posts").update(patch).eq("id", body.id).eq("status", "scheduled");
