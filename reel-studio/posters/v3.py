@@ -150,11 +150,20 @@ def arc_arrow(img, cx, cy, r, a0, a1, color, w=4):
     nx, ny = math.cos(a), math.sin(a)
     L(img).polygon(P(tip, (back[0] + 10 * nx, back[1] + 10 * ny), (back[0] - 10 * nx, back[1] - 10 * ny)), fill=color)
 
-def cta3(img, T, l1, y=1214):
+def logo_width(size):
+    return 2 * size * 0.62 + size * 0.28 + tw('Shri', size, PB) + size * 0.16 + tw('Tech', size, PB)
+
+def cta3(img, T, l1, y=1214, M=48):
     rrect(img, (0, y, 1080, 1350), 0, fill=YEL if T['dark'] else DEEP)
     tc = BLACK if T['dark'] else (187, 247, 208)
-    text(img, (52, y + 40), l1, 25, tc, PSB, 'lm')
-    phone_icon(img, 78, y + 96, 44, BLACK if T['dark'] else YEL)
-    text(img, (116, y + 96), '9993615146', 60, BLACK if T['dark'] else YEL, PB, 'lm')
-    w, h = logo_pill(img, 1030, y + 22, 34, align='r')
-    text(img, (1030 - w / 2, y + 22 + h + 26), 'Shri Balaji Digital Services', 20, BLACK if T['dark'] else WHITE, PM, 'mm')
+    text(img, (M, y + 40), l1, 25, tc, PSB, 'lm')
+    phone_icon(img, M + 26, y + 96, 44, BLACK if T['dark'] else YEL)
+    text(img, (M + 64, y + 96), '9993615146', 60, BLACK if T['dark'] else YEL, PB, 'lm')
+    # original logo, no box, right aligned
+    size = 38
+    lw = logo_width(size)
+    if T['dark']:   # yellow band: dark green Shri + green Tech
+        logo(img, 1080 - M - lw, y + 26, size, dark=False)
+    else:           # deep green band: white Shri + light green Tech
+        logo(img, 1080 - M - lw, y + 26, size, dark=True)
+    text(img, (1080 - M, y + 104), 'Shri Balaji Digital Services', 20, BLACK if T['dark'] else WHITE, PM, 'rm')

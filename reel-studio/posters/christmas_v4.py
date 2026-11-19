@@ -99,13 +99,14 @@ for i, (a, ic, t1, t2, side) in enumerate(nodes):
     else:
         text(img, (nx + 70, ny - 16), t1, 26, WHITE, PB, 'lm'); text(img, (nx + 70, ny + 18), t2, 21, (190, 210, 197), PM, 'lm')
 
-# ---- start-free ribbon for food businesses ----
-RY = 1100
-rrect(img, (40, RY, 1040, RY + 98), 22, fill=(16, 30, 21), outline=YEL, width=3)
-rich(img, 64, RY + 30, [('Start FREE today', 26, YEL, PB), ('· 10 credits every month · No card needed', 21, WHITE, PM)], anchor='l')
-cx_ = 64
-for chip in ['Restaurants', 'Cafes', 'Bakeries', 'Cloud kitchens', 'Sweet shops']:
-    w = tw(chip, 18, PSB) + 26
+# ---- start-free ribbon for food businesses (centred) ----
+RY = 1090
+rrect(img, (48, RY, 1032, RY + 98), 22, fill=(16, 30, 21), outline=YEL, width=3)
+rich(img, 540, RY + 30, [('Start FREE today', 26, YEL, PB), ('·  10 credits every month  ·  No card needed', 21, WHITE, PM)])
+chips = ['Restaurants', 'Cafes', 'Bakeries', 'Cloud kitchens', 'Sweet shops']
+ws = [tw(x, 18, PSB) + 26 for x in chips]
+cx_ = 540 - (sum(ws) + 10 * (len(ws) - 1)) / 2
+for chip, w in zip(chips, ws):
     rrect(img, (cx_, RY + 56, cx_ + w, RY + 86), 15, fill=(12, 48, 27), outline=(52, 120, 76), width=2)
     text(img, (cx_ + w / 2, RY + 71), chip, 18, (187, 247, 208), PSB, 'mm')
     cx_ += w + 10

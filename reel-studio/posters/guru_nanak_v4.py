@@ -53,7 +53,7 @@ rrect(img, (540 - w / 2, 580, 540 + w / 2, 632), 26, fill=GREEN)
 text(img, (540, 605), s, 27, WHITE, PB, 'mm')
 
 # ---- left: vector phone showing a WhatsApp campaign ----
-x, y, w_, h_ = 40, 668, 262, 420
+x, y, w_, h_ = 48, 668, 252, 410
 shadow(img, (x, y, x + w_, y + h_), 34, blur=20, alpha=0.22, off=10, color=DEEP)
 d.rounded_rectangle(P((x, y), (x + w_, y + h_)), 34 * S, fill=(18, 30, 22))
 sx0, sy0, sx1, sy1 = x + 10, y + 10, x + w_ - 10, y + h_ - 10
@@ -83,7 +83,7 @@ d.rounded_rectangle(P((bx0 + 12, yy + 32), (bx1 - 12, yy + 40)), 4 * S, fill=(20
 d.rounded_rectangle(P((bx0 + 12, yy + 32), (bx0 + 12 + (bx1 - bx0 - 24) * 0.87, yy + 40)), 4 * S, fill=GREEN)
 
 # ---- right: 4-step cards filling the column (x 334..1040) ----
-X0, X1 = 334, 1040
+X0, X1 = 330, 1032
 text(img, (X0, 684), 'WhatsApp से हर ग्राहक तक', 29, DEEP, PB, 'lm')
 text(img, (X0, 722), '4 आसान स्टेप, सब एक ही प्लेटफॉर्म पर', 22, GREEN, PSB, 'lm')
 steps = [('sheet', 'Excel से कॉन्टैक्ट जोड़ें', 'एक फाइल में ढेरों नंबर', '5,000 / फाइल'),
@@ -101,15 +101,16 @@ for i, (ic, a, b, tag) in enumerate(steps):
     rrect(img, (X1 - 18 - tw_, yc - 17, X1 - 18, yc + 17), 17, fill=(254, 240, 138))
     text(img, (X1 - 18 - tw_ / 2, yc), tag, 18, DEEP, PB, 'mm')
 
-# ---- offer ribbon for shopkeepers ----
-RY = 1110
-rrect(img, (40, RY, 1040, RY + 88), 22, fill=(254, 249, 195), outline=YEL, width=3)
-rich(img, 66, RY + 27, [('दुकानदारों के लिए WhatsApp मार्केटिंग', 24, DEEP, PB), ('सिर्फ ₹999/माह', 24, GREEN, PB)], anchor='l')
-cx_ = 66
-for chip in ['किराना', 'कपड़ा', 'मिठाई', 'मोबाइल शॉप', 'मेडिकल स्टोर', 'हार्डवेयर']:
-    w = tw(chip, 18, PSB) + 26
-    rrect(img, (cx_, RY + 50, cx_ + w, RY + 78), 14, fill=WHITE, outline=(134, 199, 157), width=2)
-    text(img, (cx_ + w / 2, RY + 64), chip, 18, DEEP, PSB, 'mm')
+# ---- offer ribbon for shopkeepers (centred) ----
+RY = 1098
+rrect(img, (48, RY, 1032, RY + 92), 22, fill=(254, 249, 195), outline=YEL, width=3)
+rich(img, 540, RY + 27, [('दुकानदारों के लिए WhatsApp मार्केटिंग', 24, DEEP, PB), ('सिर्फ ₹999/माह', 24, GREEN, PB)])
+chips = ['किराना', 'कपड़ा', 'मिठाई', 'मोबाइल शॉप', 'मेडिकल स्टोर', 'हार्डवेयर']
+ws = [tw(c, 18, PSB) + 26 for c in chips]
+cx_ = 540 - (sum(ws) + 10 * (len(ws) - 1)) / 2
+for chip, w in zip(chips, ws):
+    rrect(img, (cx_, RY + 48, cx_ + w, RY + 75), 13, fill=WHITE, outline=(134, 199, 157), width=2)
+    text(img, (cx_ + w / 2, RY + 61), chip, 18, DEEP, PSB, 'mm')
     cx_ += w + 10
 
 logo(img, 48, 34, 44, dark=False)
