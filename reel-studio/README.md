@@ -10,7 +10,8 @@ Also contains a copy of the AutoPost website code (no secrets — keys live in C
 | `meme/` | Comedy reel (`meme.py`) + its source audio |
 | `salon/` | Salon reel (light theme) — `salon.py` is also the shared light-theme library (brand block, captions, thumbnail) |
 | `clinic/` | Clinic reel (light theme) — reuses `salon.py` |
-| `assets/screenshots/` | ShriTech website screenshots used inside reels |
+| `assets/screenshots/dark/` | Dark-theme ShriTech app screenshots (owner's phone) |
+| `assets/screenshots/light-manual/` | Light-theme client screens from the User Manual (parts 1–19 only, no admin). Crop the footer: it has sample contact details |
 | `assets/fonts/` | Poppins ExtraBold, Playfair Display Italic (OFL) |
 | `audio/` | The **exact final audio track** of every published reel (.m4a) |
 | `autopost/` | Website page, Cloudflare worker, Supabase edge function (backup copy) |

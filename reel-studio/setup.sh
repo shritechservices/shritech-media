@@ -17,7 +17,8 @@ cp "$HERE/meme/meme.py" /home/claude/meme/
 cp "$HERE"/salon/*.py /home/claude/salon/
 cp "$HERE"/assets/fonts/*.ttf /home/claude/salon/fonts/
 cp "$HERE"/clinic/*.py /home/claude/clinic/
-cp "$HERE"/assets/screenshots/*.jpg /mnt/user-data/uploads/
+cp "$HERE"/assets/screenshots/dark/*.jpg /mnt/user-data/uploads/
+mkdir -p /home/claude/manual/screens && cp "$HERE"/assets/screenshots/light-manual/*.jpg /home/claude/manual/screens/
 # Source audio as in.mp4-compatible inputs for the final mux step
 cp "$HERE/salon/source-audio.m4a" /home/claude/salon/src/in.m4a
 cp "$HERE/clinic/source-audio.m4a" /home/claude/clinic/src/in.m4a
