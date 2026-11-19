@@ -65,6 +65,11 @@ textarea{min-height:110px;resize:vertical}
 .checks{display:flex;gap:16px;margin-top:6px}.checks label{display:flex;gap:8px;align-items:center;color:var(--txt);margin:0}
 .checks input{width:auto}
 .note{font-size:12px;color:var(--mut)}
+.rule{border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:10px;background:var(--card)}
+.kw{display:inline-block;font-size:12px;font-weight:600;padding:3px 10px;border-radius:99px;background:#0f2a1a;border:1px solid var(--g2);color:var(--g)}
+.rmsg{white-space:pre-wrap;font-size:13px;margin:8px 0;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
+.lrow{display:flex;gap:10px;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line);font-size:13px;word-break:break-word}
+.lrow .lst{white-space:nowrap;font-size:13px}
 .hcap{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word;white-space:normal;max-width:440px}
 #histT td.post{max-width:460px;word-break:break-word}
 .ok{color:#4ade80}.err{color:#f87171}
@@ -127,6 +132,7 @@ details ol{padding-left:20px;line-height:1.7;font-size:13px;color:var(--txt)}
 <main id="app" class="hide">
   <div class="tabs">
     <button class="tab on" data-t="cal" onclick="showTab('cal')">📅 Calendar & History</button>
+    <button class="tab" data-t="cm" onclick="showTab('cm')">💬 Comment Management</button>
     <button class="tab" data-t="admin" onclick="showTab('admin')">⚙️ Admin & Setup</button>
   </div>
 
@@ -153,6 +159,24 @@ details ol{padding-left:20px;line-height:1.7;font-size:13px;color:var(--txt)}
       <div style="overflow-x:auto"><table id="histT"><thead><tr><th></th><th>When (IST)</th><th>Post</th><th>Facebook</th><th>Instagram</th><th class="hide-sm">Status</th></tr></thead><tbody id="hist"></tbody></table></div>
       <p class="note" id="histEmpty">No posts yet.</p>
     </div>
+  </section>
+
+  <!-- ============ COMMENT MANAGEMENT ============ -->
+  <section id="t-cm" class="hide">
+    <div class="card">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <div><h2>Comment Management</h2><p class="sub">When someone comments one of your keywords on any post, we reply under the comment and send them your message privately.</p></div>
+        <div class="sp"></div>
+        <button class="btn gold" onclick="openRule()">+ Add</button>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 12px"><button class="btn sm" id="cmIg" onclick="cmPlat('instagram')">📸 Instagram comments</button><button class="btn o sm" id="cmFb" onclick="cmPlat('facebook')">👍 Facebook comments</button></div>
+      <div id="ruleList"></div>
+    </div>
+    <div class="card">
+      <h2>Activity</h2><p class="sub">Latest matched comments · ✉️ private message · 💬 public reply</p>
+      <div id="cmLog"></div>
+    </div>
+    <div class="card"><p class="note" style="margin:0">ℹ️ Meta allows <b>one private message per comment</b>, within 7 days of the comment. Your image and PDF are added to that message as download links. Comments are checked every 2 minutes. Until Meta approves Advanced access and the app is Live, it works only for accounts added to your Meta app.</p></div>
   </section>
 
   <!-- ============ ADMIN ============ -->
@@ -269,7 +293,8 @@ function enter(){
 async function logout(){try{await api('logout')}catch(e){} TOKEN='';localStorage.removeItem('st_token');boot()}
 function showTab(t){
   document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
-  document.getElementById('t-cal').classList.toggle('hide',t!=='cal');document.getElementById('t-admin').classList.toggle('hide',t!=='admin');
+  ['cal','cm','admin'].forEach(x=>document.getElementById('t-'+x).classList.toggle('hide',t!==x));
+  if(t==='cm') loadCM();
 }
 
 // ---------- calendar & history ----------
@@ -407,6 +432,67 @@ async function createPost(now){
     toast(now?'Publishing now…':'Scheduled ✅');closeModal();refresh();
   }catch(x){e.textContent=x.message}
 }
+
+// ---------- comment management ----------
+const DEF_REPLY='आपको DM भेज दिया है ✅';
+let CMP='instagram', RULES=[], EDIT=null;
+function cmPlat(p){CMP=p;cmIg.className='btn sm'+(p==='instagram'?'':' o');cmFb.className='btn sm'+(p==='facebook'?'':' o');loadCM()}
+async function loadCM(){
+  try{RULES=await api('list_rules',{platform:CMP});const log=await api('comment_log',{platform:CMP});renderCM(log)}catch(e){toast(e.message)}
+}
+function ruleState(r){if(!r.active)return['Inactive','s-cancelled'];if(r.active_till&&new Date(r.active_till+'T23:59:59+05:30')<new Date())return['Expired','s-failed'];return['Active','s-posted']}
+function stIcon(s){return s==='sent'?'✅':s==='failed'?'❌':s==='off'?'—':'⏳'}
+function renderCM(log){
+  ruleList.innerHTML=RULES.length?RULES.map(r=>{const[st,cl]=ruleState(r);return `<div class="rule">
+   <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="badge ${cl}">${st}</span>${r.keywords.map(k=>`<span class="kw">${esc(k)}</span>`).join(' ')}</div>
+   <div class="rmsg">${esc(r.message)}</div>
+   <div class="note">${r.image_url?`🖼️ <a href="${r.image_url}" target="_blank">Image</a> · `:''}${r.file_url?`📄 <a href="${r.file_url}" target="_blank">${esc(r.file_name||'Document')}</a> · `:''}${r.reply_public?`💬 Public reply: “${esc(r.public_reply||DEF_REPLY)}”`:'💬 No public reply'} · ⏳ ${r.active_till?'Till '+fmt(r.active_till+'T12:00:00+05:30',{day:'numeric',month:'short',year:'numeric'}):'No end date'}</div>
+   <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="btn o sm" onclick="openRule('${r.id}')">Edit</button><button class="btn sm ${r.active?'o':''}" onclick="toggleRule('${r.id}',${!r.active})">${r.active?'Make inactive':'Make active'}</button><button class="btn red sm" onclick="delRule('${r.id}')">Delete</button></div></div>`}).join(''):'<p class="note">No rules yet. Tap “+ Add” to create one.</p>';
+  cmLog.innerHTML=log.length?log.map(l=>`<div class="lrow"><div><b>${esc(l.from_username||'Someone')}</b> <span class="note">${fmt(l.comment_time||l.created_at,{day:'numeric',month:'short'})} · ${tm(l.comment_time||l.created_at)}</span><br><span class="note">“${esc((l.comment_text||'').slice(0,140))}” · keyword: <b>${esc(l.matched||'')}</b></span>${l.error?`<br><span class="err">${esc(l.error)}</span>`:''}</div><div class="lst">✉️ ${stIcon(l.dm_status)} &nbsp;💬 ${stIcon(l.public_status)}</div></div>`).join(''):'<p class="note">No matching comments yet.</p>';
+}
+function openRule(id){
+  const r=id?RULES.find(x=>x.id===id):null;
+  EDIT=r?{...r}:{image_url:null,image_path:null,file_url:null,file_path:null,file_name:null};
+  mbox.innerHTML=`<h2 style="margin-top:0">${r?'Edit':'New'} ${CMP==='instagram'?'Instagram':'Facebook'} comment rule</h2>
+   <label>1. Keywords — comma separated, max 10 (capital/small letters don't matter)</label><input id="rKw" value="${esc((r?.keywords||[]).join(', '))}" placeholder="growth, support, demo, price">
+   <label>2. Description — message sent privately <span class="err">*</span></label><textarea id="rMsg" placeholder="नमस्ते! 🙏 ये रही आपकी जानकारी…">${esc(r?.message||'')}</textarea>
+   <label>3. Image (optional, max 10 MB)</label><div id="rImgBox"></div><input type="file" id="rImg" accept="image/*">
+   <label>4. PDF / document (optional, max 10 MB)</label><div id="rDocBox"></div><input type="file" id="rDoc" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,application/pdf">
+   <label>5. Public reply under the comment</label><div class="checks"><label><input type="checkbox" id="rPub" ${r&&!r.reply_public?'':'checked'}> Reply publicly</label></div>
+   <input id="rPubTxt" style="margin-top:8px" value="${esc(r?.public_reply||DEF_REPLY)}">
+   <div class="row"><div><label>6. Active till (optional)</label><input type="date" id="rTill" value="${r?.active_till||''}"></div>
+   <div><label>7. Status</label><select id="rAct"><option value="1" ${!r||r.active?'selected':''}>Active</option><option value="0" ${r&&!r.active?'selected':''}>Inactive</option></select></div></div>
+   <p class="note">Works on all your ${CMP==='instagram'?'Instagram':'Facebook'} posts. Each person gets the message once per comment. Meta allows one private message per comment (within 7 days), so the image and PDF are added to it as download links.</p>
+   <p class="err" id="rErr"></p>
+   <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn gold" id="rSave" onclick="saveRule()">Save</button><button class="btn o" onclick="closeModal()">Close</button></div>`;
+  drawAtt();modal.classList.add('on');
+}
+function drawAtt(){
+  rImgBox.innerHTML=EDIT.image_url?`<p class="note">Current: <a href="${EDIT.image_url}" target="_blank">image</a> <button class="btn red sm" onclick="EDIT.image_url=null;EDIT.image_path=null;drawAtt()">Remove</button></p>`:'';
+  rDocBox.innerHTML=EDIT.file_url?`<p class="note">Current: <a href="${EDIT.file_url}" target="_blank">${esc(EDIT.file_name||'document')}</a> <button class="btn red sm" onclick="EDIT.file_url=null;EDIT.file_path=null;EDIT.file_name=null;drawAtt()">Remove</button></p>`:'';
+}
+async function upDm(f){
+  if(f.size>10*1048576) throw new Error(f.name+' is larger than 10 MB');
+  const u=await api('dm_upload_url',{filename:f.name});
+  await new Promise((res,rej)=>{const x=new XMLHttpRequest();x.open('PUT',u.signed_url);x.onload=()=>x.status<300?res():rej(new Error('Upload failed '+x.status));x.onerror=()=>rej(new Error('Network error'));const fd=new FormData();fd.append('cacheControl','3600');fd.append('',f);x.send(fd)});
+  return u;
+}
+async function saveRule(){
+  rErr.textContent='';
+  try{
+    const kws=rKw.value.split(',').map(x=>x.trim()).filter(Boolean);
+    if(!kws.length) throw new Error('Add at least one keyword');
+    if(kws.length>10) throw new Error('Maximum 10 keywords');
+    if(!rMsg.value.trim()) throw new Error('Description is required');
+    rSave.disabled=true;rSave.textContent='Saving…';
+    if(rImg.files[0]){const u=await upDm(rImg.files[0]);EDIT.image_url=u.public_url;EDIT.image_path=u.path}
+    if(rDoc.files[0]){const f=rDoc.files[0];const u=await upDm(f);EDIT.file_url=u.public_url;EDIT.file_path=u.path;EDIT.file_name=f.name}
+    await api('save_rule',{id:EDIT.id,platform:EDIT.platform||CMP,keywords:kws,message:rMsg.value,reply_public:rPub.checked,public_reply:rPubTxt.value,active_till:rTill.value||null,active:rAct.value==='1',image_url:EDIT.image_url,image_path:EDIT.image_path,file_url:EDIT.file_url,file_path:EDIT.file_path,file_name:EDIT.file_name});
+    toast('Saved ✅');closeModal();loadCM();
+  }catch(x){rErr.textContent=x.message;rSave.disabled=false;rSave.textContent='Save'}
+}
+async function toggleRule(id,a){try{await api('toggle_rule',{id,active:a});loadCM()}catch(e){toast(e.message)}}
+async function delRule(id){if(!confirm('Delete this rule?'))return;try{await api('delete_rule',{id});loadCM()}catch(e){toast(e.message)}}
 
 // ---------- admin ----------
 function fillSettings(){

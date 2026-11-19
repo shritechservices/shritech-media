@@ -144,6 +144,101 @@ async function publishDue() {
   return log;
 }
 
+
+// ---------------- Comment Management (comment → public reply + private message) ----------------
+const DEFAULT_PUBLIC_REPLY = "आपको DM भेज दिया है ✅";
+function ruleLive(r: any) {
+  if (!r.active) return false;
+  if (!r.active_till) return true;
+  return Date.now() <= new Date(`${r.active_till}T23:59:59+05:30`).getTime();
+}
+function cleanKeywords(v: unknown): string[] {
+  const arr = Array.isArray(v) ? v : String(v ?? "").split(",");
+  return [...new Set(arr.map((x) => String(x).trim()).filter(Boolean).map((x) => x.slice(0, 40)))].slice(0, 10);
+}
+function matchKeyword(text: string, kws: string[]) {
+  const t = String(text ?? "").toLowerCase().replace(/\s+/g, " ");
+  for (const k of kws) { const kk = String(k).toLowerCase().trim(); if (kk && t.includes(kk)) return k; }
+  return null;
+}
+function dmText(r: any) {
+  let s = String(r.message).trim();
+  if (r.image_url) s += `\n\n🖼️ इमेज: ${r.image_url}`;
+  if (r.file_url) s += `\n📄 ${r.file_name || "डॉक्यूमेंट"}: ${r.file_url}`;
+  return s;
+}
+async function sendPrivate(s: Record<string, string>, platform: string, commentId: string, text: string) {
+  const params = { recipient: JSON.stringify({ comment_id: commentId }), message: JSON.stringify({ text }) };
+  if (platform === "facebook") return await graph(s, "POST", `${s.page_id}/messages`, params);
+  try { return await graph(s, "POST", `${s.page_id}/messages`, params); }
+  catch (_) { return await graph(s, "POST", `${s.ig_user_id}/messages`, params); }
+}
+async function processComments(s: Record<string, string>) {
+  const out: string[] = [];
+  if (!s.page_token) return out;
+  const { data: rules } = await db.from("comment_rules").select("*");
+  const live = (rules ?? []).filter(ruleLive);
+  for (const platform of ["instagram", "facebook"]) {
+    const rs = live.filter((r: any) => r.platform === platform);
+    if (!rs.length) continue;
+    const oldest = Math.min(...rs.map((r: any) => new Date(r.created_at).getTime()));
+    const since = Math.max(oldest, Date.now() - 7 * DAY);
+    const items: any[] = [];
+    try {
+      if (platform === "instagram") {
+        const med = await graph(s, "GET", `${s.ig_user_id}/media`, { fields: "id,timestamp,comments_count", limit: "15" });
+        for (const m of med.data ?? []) {
+          if (!m.comments_count || new Date(m.timestamp).getTime() < Date.now() - 60 * DAY) continue;
+          const cs = await graph(s, "GET", `${m.id}/comments`, { fields: "id,text,timestamp,username,from{id,username}", limit: "50" });
+          for (const c of cs.data ?? []) items.push({ id: c.id, text: c.text, time: c.timestamp, from_id: c.from?.id, from_username: c.from?.username || c.username, media_id: m.id });
+        }
+      } else {
+        const posts = await graph(s, "GET", `${s.page_id}/posts`, { fields: "id,created_time", limit: "15" });
+        for (const p of posts.data ?? []) {
+          if (new Date(p.created_time).getTime() < Date.now() - 60 * DAY) continue;
+          const cs = await graph(s, "GET", `${p.id}/comments`, { fields: "id,message,created_time,from{id,name}", limit: "50", order: "reverse_chronological", filter: "stream" });
+          for (const c of cs.data ?? []) items.push({ id: c.id, text: c.message, time: c.created_time, from_id: c.from?.id, from_username: c.from?.name, media_id: p.id });
+        }
+      }
+    } catch (e) { out.push(`${platform} fetch: ${(e as Error).message}`); continue; }
+    for (const c of items) {
+      const t = new Date(c.time).getTime();
+      if (!t || t < since) continue;
+      const own = platform === "instagram"
+        ? (c.from_id === s.ig_user_id || (!!c.from_username && c.from_username === s.ig_username))
+        : c.from_id === s.page_id;
+      if (own) continue;
+      let rule: any = null, kw: string | null = null;
+      for (const r of rs) {
+        if (t < new Date(r.created_at).getTime()) continue;
+        const k = matchKeyword(c.text, r.keywords);
+        if (k) { rule = r; kw = k; break; }
+      }
+      if (!rule) continue;
+      const { data: ins, error } = await db.from("comment_log").insert({
+        platform, comment_id: c.id, media_id: c.media_id, rule_id: rule.id, from_id: c.from_id ?? null,
+        from_username: c.from_username ?? null, comment_text: c.text, matched: kw, comment_time: c.time,
+      }).select("id").maybeSingle();
+      if (error || !ins) continue; // already handled once
+      const patch: Record<string, unknown> = {}; const errs: string[] = [];
+      try { await sendPrivate(s, platform, c.id, dmText(rule)); patch.dm_status = "sent"; }
+      catch (e) { patch.dm_status = "failed"; errs.push(`Message: ${(e as Error).message}`); }
+      if (rule.reply_public) {
+        const txt = String(rule.public_reply ?? "").trim() || DEFAULT_PUBLIC_REPLY;
+        try {
+          if (platform === "instagram") await graph(s, "POST", `${c.id}/replies`, { message: txt });
+          else await graph(s, "POST", `${c.id}/comments`, { message: txt });
+          patch.public_status = "sent";
+        } catch (e) { patch.public_status = "failed"; errs.push(`Reply: ${(e as Error).message}`); }
+      } else patch.public_status = "off";
+      if (errs.length) patch.error = errs.join(" | ");
+      await db.from("comment_log").update(patch).eq("id", ins.id);
+      out.push(`${platform} ${c.id} dm:${patch.dm_status} reply:${patch.public_status}`);
+    }
+  }
+  return out;
+}
+
 async function cleanup() {
   const cutoff = new Date(Date.now() - 30 * DAY).toISOString();
   const { data: old } = await db.from("posts").select("id").lt("scheduled_at", cutoff).in("status", ["posted", "partial", "failed", "cancelled"]);
@@ -184,7 +279,12 @@ Deno.serve(async (req) => {
       await db.from("sessions").insert({ token: await sha256(t), expires_at: new Date(Date.now() + 7 * DAY).toISOString() });
       return json({ token: t });
     }
-    if (action === "tick") return json({ log: await publishDue() });
+    if (action === "tick") {
+      const log = await publishDue();
+      let comments: string[] = [];
+      try { comments = await processComments(await getSettings()); } catch (e) { comments = [`comments error: ${(e as Error).message}`]; }
+      return json({ log, comments });
+    }
     if (action === "cleanup") return json(await cleanup());
 
     // ---- login required ----
@@ -285,6 +385,59 @@ Deno.serve(async (req) => {
         if (m) await db.storage.from("media").remove([m.path]);
         await db.from("media").delete().eq("id", body.id);
         return json({ ok: true });
+      }
+      case "list_rules": {
+        let q = db.from("comment_rules").select("*").order("created_at", { ascending: false });
+        if (body.platform) q = q.eq("platform", body.platform);
+        const { data } = await q;
+        return json(data ?? []);
+      }
+      case "save_rule": {
+        const platform = body.platform === "facebook" ? "facebook" : body.platform === "instagram" ? "instagram" : "";
+        if (!platform) return json({ error: "Pick Instagram or Facebook" }, 400);
+        const keywords = cleanKeywords(body.keywords);
+        if (!keywords.length) return json({ error: "Add at least one keyword" }, 400);
+        if (!String(body.message ?? "").trim()) return json({ error: "Description is required" }, 400);
+        const till = body.active_till ? String(body.active_till).slice(0, 10) : null;
+        if (till && !/^\d{4}-\d{2}-\d{2}$/.test(till)) return json({ error: "Invalid date" }, 400);
+        const row: Record<string, unknown> = {
+          platform, keywords, message: String(body.message).trim(), reply_public: body.reply_public !== false,
+          public_reply: String(body.public_reply ?? "").trim() || null, active: body.active !== false, active_till: till,
+          image_url: body.image_url || null, image_path: body.image_path || null,
+          file_url: body.file_url || null, file_path: body.file_path || null, file_name: body.file_name || null,
+          updated_at: new Date().toISOString(),
+        };
+        if (body.id) {
+          const { data, error } = await db.from("comment_rules").update(row).eq("id", body.id).select().single();
+          if (error) throw error; return json(data);
+        }
+        const { data, error } = await db.from("comment_rules").insert(row).select().single();
+        if (error) throw error; return json(data);
+      }
+      case "toggle_rule": {
+        await db.from("comment_rules").update({ active: !!body.active, updated_at: new Date().toISOString() }).eq("id", body.id);
+        return json({ ok: true });
+      }
+      case "delete_rule": {
+        const { data: r } = await db.from("comment_rules").select("image_path,file_path").eq("id", body.id).maybeSingle();
+        const paths = [r?.image_path, r?.file_path].filter((p) => typeof p === "string" && p.startsWith("dm/")) as string[];
+        if (paths.length) await db.storage.from("media").remove(paths);
+        await db.from("comment_rules").delete().eq("id", body.id);
+        return json({ ok: true });
+      }
+      case "comment_log": {
+        let q = db.from("comment_log").select("*").order("created_at", { ascending: false }).limit(60);
+        if (body.platform) q = q.eq("platform", body.platform);
+        const { data } = await q;
+        return json(data ?? []);
+      }
+      case "dm_upload_url": {
+        const ext = String(body.filename ?? "").split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "bin";
+        const path = `dm/${new Date().toISOString().slice(0, 10)}/${randHex(8)}.${ext}`;
+        const { data, error } = await db.storage.from("media").createSignedUploadUrl(path);
+        if (error) throw error;
+        const { data: pub } = db.storage.from("media").getPublicUrl(path);
+        return json({ path, signed_url: data.signedUrl, public_url: pub.publicUrl });
       }
       case "overview": {
         const minFrom = Date.now() - 31 * DAY;
