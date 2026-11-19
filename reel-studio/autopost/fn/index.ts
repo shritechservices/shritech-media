@@ -301,7 +301,6 @@ Deno.serve(async (req) => {
       case "create_post": {
         const when = new Date(body.scheduled_at);
         if (isNaN(when.getTime())) return json({ error: "Invalid date" }, 400);
-        if (!String(body.caption ?? "").trim()) return json({ error: "Caption is required" }, 400);
         const platforms = (body.platforms ?? ["facebook", "instagram"]).filter((p: string) => ["facebook", "instagram"].includes(p));
         if (!platforms.length) return json({ error: "Pick at least one platform" }, 400);
         const { data, error } = await db.from("posts").insert({
@@ -314,7 +313,6 @@ Deno.serve(async (req) => {
       }
       case "update_post": {
         const patch: Record<string, unknown> = {};
-        if ("caption" in body && !String(body.caption ?? "").trim()) return json({ error: "Caption is required" }, 400);
         for (const k of ["title", "caption", "scheduled_at", "platforms", "media_id"]) if (k in body) patch[k] = body[k];
         if ("collaborators" in body) patch.collaborators = cleanCollabs(body.collaborators);
         await db.from("posts").update(patch).eq("id", body.id).eq("status", "scheduled");

@@ -385,7 +385,6 @@ async function createPost(now){
   const e=document.getElementById('nErr');e.textContent='';
   try{
     if(!pickMedia) throw new Error('Choose a video or image');
-    if(!document.getElementById('nCap').value.trim()) throw new Error('Caption is required');
     const platforms=[];if(document.getElementById('nFb').checked)platforms.push('facebook');if(document.getElementById('nIg').checked)platforms.push('instagram');
     const when=now?new Date().toISOString():new Date(document.getElementById('nWhen').value+':00+05:30').toISOString();
     const collab=document.getElementById('nCollab').value.split(',').map(x=>x.trim().replace(/^@/,'')).filter(Boolean);
