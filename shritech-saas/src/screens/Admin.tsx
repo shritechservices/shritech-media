@@ -40,7 +40,7 @@ export function AdminHome({ navigation }: any) {
     }>
       {ov && !ov.email_ready ? (
         <Rise><Press onPress={() => navigation.navigate('AdminSettings')}><Card style={{ flexDirection: 'row', gap: 10, alignItems: 'center', borderColor: t.gold, borderWidth: 1.5 }}>
-          <Ionicons name="mail-unread-outline" size={22} color={t.gold} /><T size={13} style={{ flex: 1 }}>Email codes aren’t switched on yet. Until then, users’ login codes show in Settings → Login codes.</T><Ionicons name="chevron-forward" size={18} color={t.mut} />
+          <Ionicons name="mail-unread-outline" size={22} color={t.gold} /><T size={13} style={{ flex: 1 }}>Email codes haven’t been confirmed yet. Tap to send yourself a test code.</T><Ionicons name="chevron-forward" size={18} color={t.mut} />
         </Card></Press></Rise>
       ) : null}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
@@ -197,26 +197,21 @@ export function AdminTenant({ navigation, route }: any) {
 // ================= Admin settings =================
 export function AdminSettings({ navigation, onLogout }: any) {
   const { t, pref, setPref } = useTheme(); const toast = useToast(); const confirm = useConfirm();
-  const [st, setSt] = useState<any>(null); const [key, setKey] = useState(''); const [sender, setSender] = useState(''); const [codes, setCodes] = useState<any[]>([]);
+  const [st, setSt] = useState<any>(null); const [codes, setCodes] = useState<any[]>([]);
   const [old, setOld] = useState(''); const [nw, setNw] = useState(''); const [busy, setBusy] = useState('');
-  const load = useCallback(async () => { try { const s = await api<any>('admin_settings_get'); setSt(s); setSender(s.sender_email); setCodes(await api<any[]>('admin_codes')); } catch { } }, []);
+  const load = useCallback(async () => { try { const s = await api<any>('admin_settings_get'); setSt(s); setCodes(await api<any[]>('admin_codes')); } catch { } }, []);
   useFocusEffect(useCallback(() => { load(); const iv = setInterval(() => api<any[]>('admin_codes').then(setCodes).catch(() => {}), 8000); return () => clearInterval(iv); }, [load]));
-  const saveEmail = async () => { setBusy('email'); try { await api('admin_settings_save', { brevo_key: key, sender_email: sender }); setKey(''); toast('Email settings saved'); load(); } catch (e: any) { toast(e.message, false); } finally { setBusy(''); } };
-  const testEmail = async () => { setBusy('test'); try { const r = await api<any>('admin_test_email'); toast(r.via === 'email' ? 'Test email sent — check your inbox' : 'Email is not switched on yet', r.via === 'email'); } catch { toast('Email could not be sent. Check the key and sender.', false); } finally { setBusy(''); } };
+  const testEmail = async () => { setBusy('test'); try { const r = await api<any>('admin_test_email'); toast(r.via === 'supabase' ? 'Test code sent — check your Gmail' : 'Supabase could not send the email. Check Auth email settings.', r.via === 'supabase'); load(); } catch { toast('Email could not be sent. Check the key and sender.', false); } finally { setBusy(''); } };
   const changePw = async () => { setBusy('pw'); try { await api('admin_change_password', { old, password: nw }); setOld(''); setNw(''); toast('Password changed'); } catch (e: any) { toast(e.message, false); } finally { setBusy(''); } };
   const out = async () => { if (await confirm({ title: 'Log out of admin?', ok: 'Log out' })) { try { await api('logout'); } catch { } onLogout(); } };
   return (
     <Screen header={<Hero><Press onPress={() => navigation.goBack()} style={{ marginBottom: 8 }}><Ionicons name="arrow-back" size={24} color="#fff" /></Press><T w="b" size={24} c="#fff">Admin settings</T></Hero>}>
       <Rise>
         <Card style={{ gap: 12 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}><T w="b" size={16}>Login code emails</T>{st ? <Pill label={st.email_ready ? 'ON' : 'OFF'} color={st.email_ready ? t.green : t.gold} bg={st.email_ready ? t.chip : t.goldSoft} /> : null}</View>
-          <T s="mut" size={12}>Uses Brevo (free, 300 emails/day). Sign up at brevo.com, verify your sender email, then create an API key (SMTP & API → API keys) and paste it here.</T>
-          <Field label="Brevo API key" value={key} onChange={setKey} secure placeholder={st?.email_ready ? 'Saved — paste a new one to replace' : 'xkeysib-…'} />
-          <Field label="Sender email (verified in Brevo)" value={sender} onChange={setSender} keyboard="email-address" />
-          <View style={{ flexDirection: 'row', gap: 10 }}>
-            <Btn title="Save" icon="save-outline" onPress={saveEmail} loading={busy === 'email'} style={{ flex: 1 }} />
-            <Btn title="Send test" kind="outline" icon="mail-outline" onPress={testEmail} loading={busy === 'test'} style={{ flex: 1 }} />
-          </View>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}><T w="b" size={16}>Login code emails</T>{st ? <Pill label={st.email_ready ? 'WORKING' : 'CHECK'} color={st.email_ready ? t.green : t.gold} bg={st.email_ready ? t.chip : t.goldSoft} /> : null}</View>
+          <T s="mut" size={12}>Codes are sent by Supabase Auth (your project’s email settings). If Supabase can’t send, the code appears below so you can share it.</T>
+          {st?.last_ok ? <T size={12}>Last email sent: {new Date(st.last_ok).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</T> : null}
+          <Btn title="Send me a test code" kind="outline" icon="mail-outline" onPress={testEmail} loading={busy === 'test'} />
         </Card>
       </Rise>
       <Rise i={1}>

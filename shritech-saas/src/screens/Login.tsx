@@ -4,29 +4,29 @@ import { Ionicons } from '@expo/vector-icons';
 import QRCode from 'react-native-qrcode-svg';
 import { Btn, Card, Field, Hero, Logo, Press, Rise, Seg, T } from '../ui';
 import { useTheme, F } from '../theme';
-import { adminLogin, adminSetup, adminStatus, adminTotp, AdminStep, enterDemo, requestCode, verifyCode } from '../api';
+import { adminForgot, adminLogin, adminReset, adminSetup, adminStatus, adminTotp, AdminStep, enterDemo, requestCode, verifyCode } from '../api';
 
-function CodeBoxes({ value, onChange, auto }: { value: string; onChange: (v: string) => void; auto?: boolean }) {
+function CodeBoxes({ value, onChange, auto, max = 6 }: { value: string; onChange: (v: string) => void; auto?: boolean; max?: number }) {
   const { t } = useTheme(); const ref = useRef<any>(null);
   return (
     <Press onPress={() => ref.current?.focus()} haptic={false}>
       <View style={{ flexDirection: 'row', gap: 8, justifyContent: 'center' }}>
-        {Array.from({ length: 6 }).map((_, i) => {
+        {Array.from({ length: Math.max(6, Math.min(max, value.length + (value.length >= 6 && value.length < max ? 1 : 0))) }).map((_, i) => {
           const on = i === value.length;
           return (
-            <View key={i} style={{ width: 46, height: 56, borderRadius: 14, borderWidth: 2, borderColor: on ? t.green : t.line, backgroundColor: t.card2, alignItems: 'center', justifyContent: 'center' }}>
+            <View key={i} style={{ width: value.length > 6 ? 36 : 46, height: 56, borderRadius: 14, borderWidth: 2, borderColor: on ? t.green : t.line, backgroundColor: t.card2, alignItems: 'center', justifyContent: 'center' }}>
               <T w="b" size={24}>{value[i] ?? ''}</T>
             </View>
           );
         })}
       </View>
-      <TextInput ref={ref} value={value} onChangeText={(v) => onChange(v.replace(/\D/g, '').slice(0, 6))} keyboardType="number-pad" autoFocus={auto} maxLength={6}
+      <TextInput ref={ref} value={value} onChangeText={(v) => onChange(v.replace(/\D/g, '').slice(0, max))} keyboardType="number-pad" autoFocus={auto} maxLength={max}
         textContentType="oneTimeCode" autoComplete="one-time-code" style={{ position: 'absolute', opacity: 0, width: 1, height: 1 }} />
     </Press>
   );
 }
 
-export default function Login({ onDone }: { onDone: (role: 'user' | 'admin') => void }) {
+export default function Login({ onDone, onBack }: { onDone: (role: 'user' | 'admin') => void; onBack?: () => void }) {
   const { t } = useTheme();
   const [mode, setMode] = useState<'user' | 'admin'>('user');
   const [err, setErr] = useState(''); const [busy, setBusy] = useState(false); const [info, setInfo] = useState('');
@@ -35,6 +35,7 @@ export default function Login({ onDone }: { onDone: (role: 'user' | 'admin') => 
   // admin
   const [hasAdmin, setHasAdmin] = useState<boolean | null>(null); const [aEmail, setAEmail] = useState(''); const [aPw, setAPw] = useState(''); const [setupKey, setSetupKey] = useState('');
   const [step, setStep] = useState<AdminStep | null>(null); const [totp, setTotp] = useState('');
+  const [forgot, setForgot] = useState<0 | 1 | 2>(0); const [rCode, setRCode] = useState(''); const [rPw, setRPw] = useState('');
   const pop = useRef(new Animated.Value(0)).current; const spin = useRef(new Animated.Value(0)).current; const shake = useRef(new Animated.Value(0)).current;
   const nd = Platform.OS !== 'web';
   useEffect(() => {
@@ -48,14 +49,15 @@ export default function Login({ onDone }: { onDone: (role: 'user' | 'admin') => 
   const send = () => run(async () => {
     if (!/^\S+@\S+\.\S+$/.test(email.trim())) throw new Error('Please enter your email address');
     await requestCode(email.trim()); setSent(true); setCode('');
-    setInfo(`We sent a 6-digit code to ${email.trim()}. Check your inbox (and spam).`);
+    setInfo(`We sent a login code to ${email.trim()}. Check your inbox (and spam), then type the code here.`);
   });
-  const verify = () => run(async () => { if (code.length !== 6) throw new Error('Enter the 6-digit code'); await verifyCode(email.trim(), code, biz.trim()); onDone('user'); });
-  useEffect(() => { if (sent && code.length === 6 && !busy) verify(); }, [code]);
+  const verify = () => run(async () => { if (code.length < 6) throw new Error('Enter the code from your email'); await verifyCode(email.trim(), code, biz.trim()); onDone('user'); });
   const aLogin = () => run(async () => {
     const r = hasAdmin === false ? await adminSetup(setupKey.trim(), aEmail.trim(), aPw) : await adminLogin(aEmail.trim(), aPw);
     setStep(r); setTotp('');
   });
+  const fSend = () => run(async () => { if (!/^\S+@\S+\.\S+$/.test(aEmail.trim())) throw new Error('Please enter your admin email'); await adminForgot(aEmail.trim()); setForgot(2); setRCode(''); });
+  const fReset = () => run(async () => { await adminReset(aEmail.trim(), rCode, rPw); setForgot(0); setAPw(''); setInfo('Password changed. Log in with the new password + Authenticator code.'); });
   const aTotp = () => run(async () => { if (!step) return; await adminTotp(step.token, totp); onDone('admin'); });
   useEffect(() => { if (step && totp.length === 6 && !busy) aTotp(); }, [totp]);
 
@@ -78,11 +80,11 @@ export default function Login({ onDone }: { onDone: (role: 'user' | 'admin') => 
           <Rise i={4}>
             <Animated.View style={{ transform: [{ translateX: shake }] }}>
               <Card style={{ gap: 14, padding: 20 }}>
-                <Seg items={[{ v: 'user', label: 'Business', icon: 'storefront-outline' }, { v: 'admin', label: 'Admin', icon: 'shield-outline' }]} value={mode} onChange={(v) => { setMode(v); setStep(null); }} />
+                <Seg items={[{ v: 'user', label: 'Business', icon: 'storefront-outline' }, { v: 'admin', label: 'Admin', icon: 'shield-outline' }]} value={mode} onChange={(v) => { setMode(v); setStep(null); setForgot(0); }} />
                 {mode === 'user' ? (!sent ? (
                   <>
                     <T w="b" size={20}>Log in or sign up 👋</T>
-                    <T s="mut" size={13}>Enter your email. We’ll send you a 6-digit code — no password needed.</T>
+                    <T s="mut" size={13}>Enter your Gmail. We’ll email you a login code — no password needed.</T>
                     <Field label="Email" value={email} onChange={setEmail} placeholder="yourname@gmail.com" keyboard="email-address" />
                     <Field label="Business name (new accounts only)" value={biz} onChange={setBiz} placeholder="e.g. Gupta Sweets" />
                     {err ? <T size={13} c={t.red}>{err}</T> : null}
@@ -92,7 +94,7 @@ export default function Login({ onDone }: { onDone: (role: 'user' | 'admin') => 
                   <>
                     <T w="b" size={20}>Enter your code</T>
                     <T s="mut" size={13}>{info}</T>
-                    <CodeBoxes value={code} onChange={setCode} auto />
+                    <CodeBoxes value={code} onChange={setCode} auto max={8} />
                     {err ? <T size={13} c={t.red}>{err}</T> : null}
                     <Btn title="Log in" icon="log-in-outline" onPress={verify} loading={busy} />
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
@@ -109,6 +111,7 @@ export default function Login({ onDone }: { onDone: (role: 'user' | 'admin') => 
                     <Field label={hasAdmin === false ? 'New password (8+ characters)' : 'Password'} value={aPw} onChange={setAPw} secure placeholder="••••••••" />
                     {err ? <T size={13} c={t.red}>{err}</T> : null}
                     <Btn title={hasAdmin === false ? 'Create admin' : 'Continue'} icon="arrow-forward" onPress={aLogin} loading={busy} />
+                    {hasAdmin ? <Press onPress={() => { setForgot(1); setErr(''); }}><T w="s" size={13} c={t.green} style={{ textAlign: 'center' }}>Forgot password?</T></Press> : null}
                   </>
                 ) : (
                   <>
@@ -139,6 +142,7 @@ export default function Login({ onDone }: { onDone: (role: 'user' | 'admin') => 
             </Animated.View>
           </Rise>
           {mode === 'user' ? <Rise i={6}><Btn title="Try demo (sample data)" kind="outline" icon="sparkles-outline" onPress={async () => { await enterDemo(); onDone('user'); }} /></Rise> : null}
+          {onBack ? <Press onPress={onBack}><T w="s" size={13} c={t.green} style={{ textAlign: 'center' }}>← Back to home</T></Press> : null}
           <Rise i={7}><T s="mut" size={12} style={{ textAlign: 'center' }}>Shri Balaji Digital Services · 📞 99936 15146</T></Rise>
         </View>
       </ScrollView>

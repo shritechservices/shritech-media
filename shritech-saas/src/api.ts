@@ -23,7 +23,7 @@ export async function clearSession() { TOKEN = ''; DEMO = false; await AsyncStor
 async function saveSession(t: string, r: Role) { TOKEN = t; ROLE = r; DEMO = false; await AsyncStorage.multiSet([['sa_token', t], ['sa_role', r]]); await AsyncStorage.removeItem('sa_demo'); }
 
 // Friendly messages only — raw server errors are never shown.
-const KNOWN = ['not correct', 'expired', 'too many', 'wait a few', 'paused', 'being set up', 'not connected', 'used all', 'valid email', 'at least', 'already', 'only the owner', 'only failed', 'keyword', 'description is required', 'used by a scheduled', 'pick at least', 'choose a reel', 'setup key', 'log in again', 'contact shritech'];
+const KNOWN = ['not correct', 'expired', 'too many', 'wait a few', 'paused', 'being set up', 'not connected', 'used all', 'valid email', 'at least', 'already', 'only the owner', 'only failed', 'keyword', 'description is required', 'used by a scheduled', 'pick at least', 'choose a reel', 'setup key', 'log in again', 'contact shritech', 'wait a minute', 'enter the code'];
 export class ApiError extends Error {}
 
 export async function api<T = any>(action: string, data: Record<string, any> = {}, tok?: string): Promise<T> {
@@ -49,6 +49,8 @@ export type AdminStep = { token: string; stage: 'totp' | 'totp_enroll' | 'full';
 export const adminStatus = () => api<{ admin_exists: boolean }>('admin_status', {}, '');
 export const adminSetup = (setup_key: string, email: string, password: string) => api<AdminStep>('admin_setup', { setup_key, email, password }, '');
 export const adminLogin = (email: string, password: string) => api<AdminStep>('admin_login', { email, password }, '');
+export const adminForgot = (email: string) => api('admin_forgot', { email }, '');
+export const adminReset = (email: string, code: string, password: string) => api('admin_reset', { email, code, password }, '');
 export async function adminTotp(stepToken: string, code: string) { const r = await api<AdminStep>('admin_totp', { code }, stepToken); await saveSession(r.token, 'admin'); }
 
 /** Upload: signed URL → register. Files are later moved to GitHub automatically. */

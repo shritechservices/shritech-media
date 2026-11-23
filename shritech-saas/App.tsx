@@ -13,6 +13,7 @@ import { ConfirmProvider, Logo, ToastProvider, tap, sh } from './src/ui';
 import { clearSession, restoreSession, setLogoutHandler } from './src/api';
 import { resetMe } from './src/data';
 import Login from './src/screens/Login';
+import Landing from './src/screens/Landing';
 import Home from './src/screens/Home';
 import Calendar from './src/screens/Calendar';
 import Compose from './src/screens/Compose';
@@ -55,6 +56,25 @@ function Tabs() {
   );
 }
 
+/** On wide web screens, keep the app a comfortable width (landing page stays full width). */
+function WebFrame({ children }: { children: React.ReactNode }) {
+  const { t } = useTheme();
+  if (Platform.OS !== 'web') return <>{children}</>;
+  return <View style={{ flex: 1, backgroundColor: t.bg2 }}>{children}</View>;
+}
+
+function AppWidth({ children }: { children: React.ReactNode }) {
+  const { t } = useTheme();
+  if (Platform.OS !== 'web') return <>{children}</>;
+  return <View style={{ flex: 1, alignItems: 'center', backgroundColor: t.bg2 }}><View style={{ flex: 1, width: '100%', maxWidth: 760, ...sh('#000', 0.08, 30, 0) }}>{children}</View></View>;
+}
+
+function LoginWidth({ children }: { children: React.ReactNode }) {
+  const { t } = useTheme();
+  if (Platform.OS !== 'web') return <>{children}</>;
+  return <View style={{ flex: 1, alignItems: 'center', backgroundColor: t.bg2 }}><View style={{ flex: 1, width: '100%', maxWidth: 520 }}>{children}</View></View>;
+}
+
 function Splash() {
   const { t } = useTheme(); const a = useRef(new Animated.Value(0)).current;
   useEffect(() => { Animated.loop(Animated.sequence([Animated.timing(a, { toValue: 1, duration: 700, useNativeDriver: Platform.OS !== 'web' }), Animated.timing(a, { toValue: 0, duration: 700, useNativeDriver: Platform.OS !== 'web' })])).start(); }, []);
@@ -64,22 +84,23 @@ function Splash() {
 function Root() {
   const { t } = useTheme();
   const [state, setState] = useState<'boot' | 'out' | 'user' | 'admin'>('boot');
+  const [showLogin, setShowLogin] = useState(Platform.OS !== 'web');
   const logout = async () => { await clearSession(); resetMe(); setState('out'); };
   useEffect(() => { setLogoutHandler(() => { resetMe(); setState('out'); }); restoreSession().then((r) => setState(r === 'admin' ? 'admin' : r ? 'user' : 'out')); }, []);
   const navTheme = { ...(t.mode === 'dark' ? DarkTheme : DefaultTheme), colors: { ...(t.mode === 'dark' ? DarkTheme : DefaultTheme).colors, background: t.bg, card: t.card, primary: t.green, text: t.text, border: t.line } };
   return (
     <>
       <StatusBar style={state === 'boot' ? (t.mode === 'dark' ? 'light' : 'dark') : 'light'} />
-      {state === 'boot' ? <Splash /> : state === 'out' ? <Login onDone={(r) => { resetMe(); setState(r); }} /> : state === 'admin' ? (
-        <NavigationContainer theme={navTheme as any}>
+      {state === 'boot' ? <Splash /> : state === 'out' && !showLogin ? <Landing onStart={() => setShowLogin(true)} /> : state === 'out' ? <LoginWidth><Login onBack={Platform.OS === 'web' ? () => setShowLogin(false) : undefined} onDone={(r) => { resetMe(); setState(r); }} /></LoginWidth> : state === 'admin' ? (
+        <AppWidth><NavigationContainer theme={navTheme as any}>
           <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
             <Stack.Screen name="AdminHome" component={AdminHome} />
             <Stack.Screen name="AdminTenant" component={AdminTenant} />
             <Stack.Screen name="AdminSettings">{(p) => <AdminSettings {...p} onLogout={logout} />}</Stack.Screen>
           </Stack.Navigator>
-        </NavigationContainer>
+        </NavigationContainer></AppWidth>
       ) : (
-        <NavigationContainer theme={navTheme as any}>
+        <AppWidth><NavigationContainer theme={navTheme as any}>
           <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
             <Stack.Screen name="Tabs" component={Tabs} />
             <Stack.Screen name="Post" component={PostScreen} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
@@ -87,7 +108,7 @@ function Root() {
             <Stack.Screen name="Account">{(p) => <Account {...p} onLogout={logout} />}</Stack.Screen>
             <Stack.Screen name="New" component={Compose} />
           </Stack.Navigator>
-        </NavigationContainer>
+        </NavigationContainer></AppWidth>
       )}
     </>
   );
@@ -99,11 +120,13 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
+        <WebFrame>
         <ToastProvider>
           <ConfirmProvider>
             <Root />
           </ConfirmProvider>
         </ToastProvider>
+        </WebFrame>
       </ThemeProvider>
     </SafeAreaProvider>
   );
