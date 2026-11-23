@@ -27,7 +27,10 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -45,6 +48,15 @@
     "runtimeVersion": "exposdk:58.0.0",
     "experiments": {
       "baseUrl": "/shritech-media"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "3ad849f4-cd57-48f2-9669-8e6d56d364b6"
+      }
+    },
+    "owner": "shritechservices",
+    "updates": {
+      "url": "https://u.expo.dev/3ad849f4-cd57-48f2-9669-8e6d56d364b6"
     }
   }
 }
