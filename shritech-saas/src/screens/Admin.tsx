@@ -276,6 +276,9 @@ export function AdminSettings({ navigation, onLogout }: any) {
   const [old, setOld] = useState(''); const [nw, setNw] = useState(''); const [busy, setBusy] = useState('');
   const [gh, setGh] = useState<any>(null); const [ghTok, setGhTok] = useState('');
   useEffect(() => { api<any>('admin_github_get').then(setGh).catch(() => {}); }, []);
+  const [defRepo, setDefRepo] = useState(''); const [defNote, setDefNote] = useState<string | null>(null);
+  const saveDef = async () => { setBusy('def'); setDefNote(null); try { const r = await api<any>('admin_github_default', { repo: defRepo }); if (r.ok) { setDefRepo(''); setGh(await api<any>('admin_github_get')); toast('Default storage updated ✅'); } else { setDefNote(r.note); toast('Not changed — see the note', false); } } catch (e: any) { toast(e.message, false); } finally { setBusy(''); } };
+  const resetDef = async () => { if (!(await confirm({ title: 'Use the built-in storage?', msg: 'New files of businesses without their own GitHub will go to shritechservices/shritech-media again.', ok: 'Yes, reset' }))) return; setBusy('defr'); try { await api('admin_github_default_clear'); setGh(await api<any>('admin_github_get')); toast('Back to built-in storage'); } catch (e: any) { toast(e.message, false); } finally { setBusy(''); } };
   const saveGh = async () => { setBusy('gh'); try { const r = await api<any>('admin_github_save', { token: ghTok }); setGhTok(''); setGh(await api<any>('admin_github_get')); toast(`GitHub key saved ✅ (${r.login})`); } catch (e: any) { toast(e.message, false); } finally { setBusy(''); } };
   const load = useCallback(async () => { try { const s = await api<any>('admin_settings_get'); setSt(s); setCodes(await api<any[]>('admin_codes')); } catch { } }, []);
   useFocusEffect(useCallback(() => { load(); const iv = setInterval(() => api<any[]>('admin_codes').then(setCodes).catch(() => {}), 8000); return () => clearInterval(iv); }, [load]));
@@ -324,11 +327,34 @@ export function AdminSettings({ navigation, onLogout }: any) {
       </Rise>
       <Rise i={3}>
         <Card style={{ gap: 12 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><Ionicons name="server-outline" size={20} color={t.text} /><T w="b" size={16}>Default storage</T></View>
+          <T s="mut" size={12}>Where new reels & images go for businesses that have NOT connected their own GitHub. Businesses with their own GitHub always use theirs.</T>
+          <View style={{ backgroundColor: t.chip, borderRadius: 12, padding: 12, gap: 4 }}>
+            <T s="mut" size={11}>Currently used</T>
+            <T w="b" size={15} c={t.green}>{gh?.default_repo || 'shritechservices/shritech-media'}</T>
+            <T s="mut" size={11}>{gh?.default_repo ? `branch ${gh.default_branch || 'main'}${gh.default_set_at ? ' · set ' + dateStr(gh.default_set_at, true) : ''}` : 'Built-in storage'}</T>
+          </View>
+          <Field label="Change to (username/repository-name)" value={defRepo} onChange={setDefRepo} placeholder="e.g. shritechservices/shritech-media-3" />
+          {defNote ? <View style={{ backgroundColor: t.goldSoft, borderRadius: 12, padding: 10 }}><T size={12}>{defNote}</T></View> : null}
+          <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
+            <Btn title="Check & set as default" icon="swap-horizontal-outline" onPress={saveDef} loading={busy === 'def'} disabled={!gh?.saved || defRepo.trim().length < 3} style={{ flex: 1, minWidth: 240 }} />
+            {gh?.default_repo ? <Btn title="Reset to built-in" kind="outline" icon="arrow-undo-outline" onPress={resetDef} loading={busy === 'defr'} style={{ flex: 1, minWidth: 240 }} /> : null}
+          </View>
+          <Steps title="When a storage repository gets full (~1–2 GB)" steps={[
+            'On GitHub (shritechservices): + → New repository → name like shritech-media-3 → Public → tick “Add a README file” → Create.',
+            'Come here, type  shritechservices/shritech-media-3  above and tap “Check & set as default”.',
+            'For your own business: Businesses → Shri Balaji Digital → Storage (GitHub) → enter the same name → Check & connect.',
+            'Old files stay where they are and keep working — only new uploads go to the new repository.',
+          ]} />
+        </Card>
+      </Rise>
+      <Rise i={4}>
+        <Card style={{ gap: 12 }}>
           <T w="b" size={16}>Appearance</T>
           <Seg<ThemePref> items={[{ v: 'system', label: 'Auto', icon: 'phone-portrait-outline' }, { v: 'light', label: 'Light', icon: 'sunny-outline' }, { v: 'dark', label: 'Dark', icon: 'moon-outline' }]} value={pref} onChange={setPref} />
         </Card>
       </Rise>
-      <Rise i={4}>
+      <Rise i={5}>
         <Card style={{ gap: 12 }}>
           <T w="b" size={16}>Change admin password</T>
           <Field label="Old password" value={old} onChange={setOld} secure />
@@ -336,7 +362,7 @@ export function AdminSettings({ navigation, onLogout }: any) {
           <Btn title="Update password" kind="outline" icon="key-outline" onPress={changePw} loading={busy === 'pw'} />
         </Card>
       </Rise>
-      <Rise i={5}><Btn title="Log out" kind="red" icon="log-out-outline" onPress={out} /></Rise>
+      <Rise i={6}><Btn title="Log out" kind="red" icon="log-out-outline" onPress={out} /></Rise>
     </Screen>
   );
 }

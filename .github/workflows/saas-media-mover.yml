@@ -29,7 +29,7 @@ jobs:
           mkdir -p saas-media; : > done_client.jsonl; : > failed.jsonl
           jq -c '.items[]' list.json | while read -r it; do
             ID=$(echo "$it" | jq -r .id); P=$(echo "$it" | jq -r .path); U=$(echo "$it" | jq -r .public_url)
-            R=$(echo "$it" | jq -r '.repo // empty'); B=$(echo "$it" | jq -r '.branch // "main"'); TID=$(echo "$it" | jq -r .tenant_id)
+            R=$(echo "$it" | jq -r '.repo // empty'); B=$(echo "$it" | jq -r '.branch // "main"'); TID=$(echo "$it" | jq -r .tenant_id); DEF=$(echo "$it" | jq -r '.is_default // false')
             if [ -n "$R" ] && [ -n "$GT" ]; then
               # Client's own repository: upload through the GitHub API
               curl -sfL "$U" -o f.bin || continue
@@ -42,8 +42,13 @@ jobs:
                 jq -n --arg id "$ID" --arg gp "saas-media/$P" --arg r "$R" --arg u "https://raw.githubusercontent.com/$R/$SHA/saas-media/$P" '{id:$id,gh_path:$gp,url:$u,repo:$r}' >> done_client.jsonl
               else
                 MSG=$(jq -r '.message // "error"' resp.json 2>/dev/null | head -c 150)
-                echo "upload to client repo failed ($CODE)"
-                jq -n --arg t "$TID" --arg r "$R" --arg e "HTTP $CODE $MSG" '{tenant_id:$t,repo:$r,error:$e}' >> failed.jsonl
+                echo "upload to repo failed ($CODE)"
+                if [ "$DEF" = "true" ]; then
+                  # default storage repo failed -> keep the file in this (built-in) repo instead
+                  mkdir -p "saas-media/$(dirname "$P")"; cp f.bin "saas-media/$P" && echo "$ID saas-media/$P" >> moved.txt
+                else
+                  jq -n --arg t "$TID" --arg r "$R" --arg e "HTTP $CODE $MSG" '{tenant_id:$t,repo:$r,error:$e}' >> failed.jsonl
+                fi
               fi
               rm -f f.bin f.b64 body.json resp.json
             else
