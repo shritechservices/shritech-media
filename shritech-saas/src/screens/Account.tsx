@@ -2,12 +2,13 @@ import React, { useCallback, useState } from 'react';
 import { Linking, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import { Btn, Card, Field, Hero, Logo, Pill, PlatformIcons, Press, Rise, Screen, Seg, T, useConfirm, useToast } from '../ui';
+import { Btn, Card, Field, Hero, Logo, Pill, PlatformIcons, Press, Rise, Screen, Seg, T, useConfirm, useToast, useWide } from '../ui';
 import { ThemePref, useTheme } from '../theme';
 import { api, isDemo } from '../api';
 import { getMe, Me } from '../data';
 
 export default function Account({ navigation, onLogout }: any) {
+  const wide = useWide();
   const { t, pref, setPref } = useTheme(); const toast = useToast(); const confirm = useConfirm();
   const [me, setMe] = useState<Me | null>(null); const [team, setTeam] = useState<any[]>([]);
   const [name, setName] = useState(''); const [phone, setPhone] = useState(''); const [note, setNote] = useState(''); const [cap, setCap] = useState(''); const [newMem, setNewMem] = useState(''); const [busy, setBusy] = useState(''); const [pw, setPw] = useState('');
@@ -24,9 +25,9 @@ export default function Account({ navigation, onLogout }: any) {
   const statusPill = ten ? ({ active: [t.green, t.chip, 'Active'], pending: [t.gold, t.goldSoft, 'Setting up'], paused: [t.red, t.redSoft, 'Paused'], closed: [t.mut, t.card2, 'Closed'] } as any)[ten.status] ?? [t.mut, t.card2, ten.status] : null;
   const used = ten ? Math.min(1, ten.post_quota ? ten.used_this_month / ten.post_quota : 0) : 0;
   return (
-    <Screen header={
+    <Screen narrow header={
       <Hero>
-        <Press onPress={() => navigation.goBack()} style={{ marginBottom: 8 }}><Ionicons name="arrow-back" size={24} color="#fff" /></Press>
+        {!wide ? <Press onPress={() => navigation.goBack()} style={{ marginBottom: 8 }}><Ionicons name="arrow-back" size={24} color="#fff" /></Press> : null}
         <T w="b" size={24} c="#fff">My account</T>
         <T size={13} c="rgba(255,255,255,0.85)">{me?.user.email}</T>
       </Hero>

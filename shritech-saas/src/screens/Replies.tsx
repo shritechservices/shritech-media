@@ -24,7 +24,7 @@ export default function Replies({ navigation }: any) {
     try { await api('toggle_rule', { id: r.id, active: v }); toast(v ? 'Auto reply is ON' : 'Auto reply paused'); } catch (e: any) { toast(e.message, false); load(); }
   };
   return (
-    <Screen onRefresh={() => load(true)} refreshing={ref} header={
+    <Screen narrow onRefresh={() => load(true)} refreshing={ref} header={
       <Hero>
         <T w="b" size={24} c="#fff">Auto replies</T>
         <T size={13} c="rgba(255,255,255,0.85)">{trig === 'comment' ? 'Someone comments a keyword → we reply and send your message in DM' : 'Someone replies to your story → we send your message in DM'}</T>

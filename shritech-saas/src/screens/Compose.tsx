@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Platform, ScrollView, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { Btn, Card, Field, Hero, Press, Rise, Screen, SectionTitle, Skel, T, Thumb, useToast, Empty } from '../ui';
+import { Btn, Card, Field, Hero, Press, Rise, Screen, SectionTitle, Skel, T, Thumb, useToast, Empty, Cols, useWide } from '../ui';
 import { useTheme } from '../theme';
 import { api, uploadFile } from '../api';
 import { getSettings } from '../data';
@@ -33,7 +33,7 @@ function Success({ onClose, when }: { onClose: () => void; when: string }) {
 }
 
 export default function Compose({ route, navigation }: any) {
-  const { t } = useTheme(); const toast = useToast();
+  const { t } = useTheme(); const toast = useToast(); const wide = useWide();
   const edit: Post | undefined = route?.params?.edit;
   const [media, setMedia] = useState<Media[]>([]); const [loadingM, setLoadingM] = useState(true);
   const [pick, setPick] = useState<string | null>(edit?.media_id ?? edit?.media?.id ?? null);
@@ -91,11 +91,12 @@ export default function Compose({ route, navigation }: any) {
         <T size={13} c="rgba(255,255,255,0.85)">Choose · write · pick a time. We post it for you.</T>
       </Hero>
     }>
+      <Cols ratio={1.25} left={<>
       <Rise>
         <SectionTitle title="1 · Choose reel or image" />
       </Rise>
       <Rise i={1}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingVertical: 4 }}>
+        <ScrollView horizontal={!wide} showsHorizontalScrollIndicator={false} style={wide ? { maxHeight: 440 } : undefined} contentContainerStyle={{ gap: 10, paddingVertical: 4, ...(wide ? { flexWrap: 'wrap', flexDirection: 'row' } : {}) }}>
           {!edit ? (
             <Press onPress={uploadNew} style={{ width: 96, height: 132, borderRadius: 16, borderWidth: 2, borderStyle: 'dashed', borderColor: t.green, alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: t.chip }}>
               {up > 0 ? <T w="b" size={18} c={t.green}>{Math.round(up * 100)}%</T> : <Ionicons name="cloud-upload" size={28} color={t.green} />}
@@ -132,6 +133,7 @@ export default function Compose({ route, navigation }: any) {
         </Card>
       </Rise>
 
+      </>} right={<>
       <Rise i={4}><SectionTitle title="3 · Where" /></Rise>
       <Rise i={5}>
         <View style={{ flexDirection: 'row', gap: 10 }}>
@@ -151,7 +153,7 @@ export default function Compose({ route, navigation }: any) {
 
       <Rise i={6}><SectionTitle title="4 · When (India time)" /></Rise>
       <Rise i={7}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+        <ScrollView horizontal={!wide} showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, ...(wide ? { flexWrap: 'wrap', flexDirection: 'row' } : {}) }}>
           {days.map((d, i) => {
             const on = d.y === day.y && d.m === day.m && d.d === day.d;
             return (
@@ -188,6 +190,7 @@ export default function Compose({ route, navigation }: any) {
         </Card>
       </Rise>
       <Rise i={9}><Btn title={edit ? 'Save changes' : 'Schedule post'} icon={edit ? 'save-outline' : 'paper-plane'} kind="gold" onPress={save} loading={busy} /></Rise>
+      </>} />
     </Screen>
   );
 }

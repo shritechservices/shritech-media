@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Btn, Card, CountUp, Empty, Hero, Logo, PlatformIcons, Press, Rise, Screen, SectionTitle, Skel, T, Thumb, Pill, useStatus, sh } from '../ui';
+import { Btn, Card, CountUp, Empty, Hero, Logo, PlatformIcons, Press, Rise, Screen, SectionTitle, Skel, T, Thumb, Pill, useStatus, sh, Cols, useWide } from '../ui';
 import { useTheme } from '../theme';
 import { useOverview, getMe, Me } from '../data';
 import { isDemo } from '../api';
@@ -23,7 +23,7 @@ function Countdown({ to }: { to: string }) {
 }
 
 export default function Home({ navigation }: any) {
-  const { t } = useTheme(); const stat = useStatus();
+  const { t } = useTheme(); const stat = useStatus(); const wide = useWide();
   const { posts, upcoming, loading, refreshing, reload } = useOverview(() => ({ from: new Date(Date.now() - 30 * 86400000).toISOString(), to: new Date(Date.now() + 31 * 86400000).toISOString() }));
   const [me, setMe] = useState<Me | null>(null);
   useEffect(() => { const u = navigation.addListener('focus', () => getMe(true).then(setMe).catch(() => {})); getMe().then(setMe).catch(() => {}); return u; }, []);
@@ -46,7 +46,7 @@ export default function Home({ navigation }: any) {
   return (
     <Screen onRefresh={reload} refreshing={refreshing} header={
       <Hero>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', display: wide ? 'none' : 'flex' }}>
           <Logo size={26} light />
           <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
             {isDemo() ? <Pill label="DEMO" color="#2A2000" bg="#FACC15" icon="sparkles" /> : null}
@@ -55,7 +55,7 @@ export default function Home({ navigation }: any) {
             </Press>
           </View>
         </View>
-        <Rise i={1}><T w="m" size={15} c="rgba(255,255,255,0.85)" style={{ marginTop: 18 }}>{greet()} 👋</T></Rise>
+        <Rise i={1}><T w="m" size={15} c="rgba(255,255,255,0.85)" style={{ marginTop: wide ? 0 : 18 }}>{greet()} 👋</T></Rise>
         <Rise i={2}><T w="b" size={24} c="#fff">{ten?.name ?? 'Your posts are on autopilot'}</T></Rise>
         {next ? (
           <Rise i={3}>
@@ -73,6 +73,7 @@ export default function Home({ navigation }: any) {
         ) : null}
       </Hero>
     }>
+      <Cols ratio={1.35} left={<>
       {ten && !ten.live ? (
         <Rise>
           <Card style={{ gap: 10, borderColor: t.gold, borderWidth: 1.5 }}>
@@ -151,8 +152,9 @@ export default function Home({ navigation }: any) {
         ))}
       </View>
 
+      </>} right={<>
       <SectionTitle title="Recent activity" />
-      {loading ? <><Skel /><Skel /></> : past.length === 0 ? <Card><Empty icon="time-outline" title="Nothing posted yet" sub="Posted items from the last 30 days show here." /></Card> : past.slice(0, 6).map((p, i) => {
+      {loading ? <><Skel /><Skel /></> : past.length === 0 ? <Card><Empty icon="time-outline" title="Nothing posted yet" sub="Posted items from the last 30 days show here." /></Card> : past.slice(0, wide ? 10 : 6).map((p, i) => {
         const s = stat(p.status);
         return (
           <Rise key={p.id} i={i}>
@@ -170,6 +172,7 @@ export default function Home({ navigation }: any) {
           </Rise>
         );
       })}
+      </>} />
     </Screen>
   );
 }

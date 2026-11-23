@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Platform, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme, createNavigationContainerRef } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,9 +9,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFonts, Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold, Poppins_800ExtraBold } from '@expo-google-fonts/poppins';
 import { ThemeProvider, useTheme, F } from './src/theme';
-import { ConfirmProvider, Logo, ToastProvider, tap, sh } from './src/ui';
+import { ConfirmProvider, Logo, ToastProvider, tap, sh, useWide } from './src/ui';
+import { DesktopShell, activeRoute } from './src/Desktop';
 import { clearSession, restoreSession, setLogoutHandler } from './src/api';
-import { resetMe } from './src/data';
+import { resetMe, getMe } from './src/data';
 import Login from './src/screens/Login';
 import Landing from './src/screens/Landing';
 import Home from './src/screens/Home';
@@ -33,9 +34,9 @@ function TabIcon({ name, focused, color }: { name: any; focused: boolean; color:
 }
 
 function Tabs() {
-  const { t } = useTheme(); const ins = useSafeAreaInsets();
+  const { t } = useTheme(); const ins = useSafeAreaInsets(); const wide = useWide();
   return (
-    <Tab.Navigator screenOptions={{
+    <Tab.Navigator tabBar={wide ? () => null : undefined} screenOptions={{
       headerShown: false, tabBarActiveTintColor: t.green, tabBarInactiveTintColor: t.mut,
       tabBarStyle: { backgroundColor: t.tabBar, borderTopColor: t.line, height: 64 + ins.bottom, paddingTop: 6, paddingBottom: ins.bottom + 6, ...sh('#000', t.mode === 'dark' ? 0.4 : 0.08, 20, -4) },
       tabBarLabelStyle: { fontFamily: F.s, fontSize: 11 },
@@ -64,15 +65,47 @@ function WebFrame({ children }: { children: React.ReactNode }) {
 }
 
 function AppWidth({ children }: { children: React.ReactNode }) {
-  const { t } = useTheme();
-  if (Platform.OS !== 'web') return <>{children}</>;
+  const { t } = useTheme(); const wide = useWide();
+  if (Platform.OS !== 'web' || wide) return <>{children}</>;
   return <View style={{ flex: 1, alignItems: 'center', backgroundColor: t.bg2 }}><View style={{ flex: 1, width: '100%', maxWidth: 760, ...sh('#000', 0.08, 30, 0) }}>{children}</View></View>;
 }
 
 function LoginWidth({ children }: { children: React.ReactNode }) {
-  const { t } = useTheme();
-  if (Platform.OS !== 'web') return <>{children}</>;
+  const { t } = useTheme(); const wide = useWide();
+  if (Platform.OS !== 'web' || wide) return <>{children}</>;
   return <View style={{ flex: 1, alignItems: 'center', backgroundColor: t.bg2 }}><View style={{ flex: 1, width: '100%', maxWidth: 520 }}>{children}</View></View>;
+}
+
+const userNav = createNavigationContainerRef<any>();
+const adminNav = createNavigationContainerRef<any>();
+
+/** Desktop sidebar for business users (only on wide browser screens). */
+function UserFrame({ children, route, onLogout }: { children: React.ReactNode; route: string; onLogout: () => void }) {
+  const wide = useWide(); const [me, setMe] = useState<any>(null);
+  useEffect(() => { if (wide) getMe().then(setMe).catch(() => {}); }, [wide, route]);
+  if (!wide) return <>{children}</>;
+  const go = (k: string) => { if (!userNav.isReady()) return; if (k === 'Account') userNav.navigate('Account'); else userNav.navigate('Tabs', { screen: k }); };
+  return (
+    <DesktopShell active={route} onNav={go} onLogout={onLogout} onAccount={() => go('Account')}
+      title={me?.tenant?.name} subtitle={me?.user?.email}
+      primary={{ label: 'New post', icon: 'add-circle', onPress: () => userNav.isReady() && userNav.navigate('New') }}
+      items={[
+        { key: 'Home', label: 'Dashboard', icon: 'grid' },
+        { key: 'Calendar', label: 'Calendar', icon: 'calendar', match: ['Post'] },
+        { key: 'Library', label: 'Media library', icon: 'images' },
+        { key: 'Replies', label: 'Auto replies', icon: 'chatbubbles', match: ['Rule'] },
+        { key: 'Account', label: 'Account & team', icon: 'person-circle' },
+      ]}>{children}</DesktopShell>
+  );
+}
+function AdminFrame({ children, route, onLogout, email }: { children: React.ReactNode; route: string; onLogout: () => void; email?: string }) {
+  const wide = useWide();
+  if (!wide) return <>{children}</>;
+  return (
+    <DesktopShell active={route} onNav={(k) => adminNav.isReady() && adminNav.navigate(k)} onLogout={onLogout} onAccount={() => adminNav.isReady() && adminNav.navigate('AdminSettings')}
+      title="ShriTech Admin" subtitle="Super admin"
+      items={[{ key: 'AdminHome', label: 'Businesses', icon: 'storefront', match: ['AdminTenant'] }, { key: 'AdminSettings', label: 'Settings', icon: 'settings' }]}>{children}</DesktopShell>
+  );
 }
 
 function Splash() {
@@ -85,6 +118,7 @@ function Root() {
   const { t } = useTheme();
   const [state, setState] = useState<'boot' | 'out' | 'user' | 'admin'>('boot');
   const [showLogin, setShowLogin] = useState(Platform.OS !== 'web');
+  const [route, setRoute] = useState('');
   const logout = async () => { await clearSession(); resetMe(); setState('out'); };
   useEffect(() => { setLogoutHandler(() => { resetMe(); setState('out'); }); restoreSession().then((r) => setState(r === 'admin' ? 'admin' : r ? 'user' : 'out')); }, []);
   const navTheme = { ...(t.mode === 'dark' ? DarkTheme : DefaultTheme), colors: { ...(t.mode === 'dark' ? DarkTheme : DefaultTheme).colors, background: t.bg, card: t.card, primary: t.green, text: t.text, border: t.line } };
@@ -92,15 +126,15 @@ function Root() {
     <>
       <StatusBar style={state === 'boot' ? (t.mode === 'dark' ? 'light' : 'dark') : 'light'} />
       {state === 'boot' ? <Splash /> : state === 'out' && !showLogin ? <Landing onStart={() => setShowLogin(true)} /> : state === 'out' ? <LoginWidth><Login onBack={Platform.OS === 'web' ? () => setShowLogin(false) : undefined} onDone={(r) => { resetMe(); setState(r); }} /></LoginWidth> : state === 'admin' ? (
-        <AppWidth><NavigationContainer theme={navTheme as any}>
+        <AppWidth><AdminFrame route={route} onLogout={logout}><NavigationContainer ref={adminNav} onReady={() => setRoute(activeRoute(adminNav.getRootState()))} onStateChange={(st) => setRoute(activeRoute(st))} theme={navTheme as any}>
           <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
             <Stack.Screen name="AdminHome" component={AdminHome} />
             <Stack.Screen name="AdminTenant" component={AdminTenant} />
             <Stack.Screen name="AdminSettings">{(p) => <AdminSettings {...p} onLogout={logout} />}</Stack.Screen>
           </Stack.Navigator>
-        </NavigationContainer></AppWidth>
+        </NavigationContainer></AdminFrame></AppWidth>
       ) : (
-        <AppWidth><NavigationContainer theme={navTheme as any}>
+        <AppWidth><UserFrame route={route} onLogout={logout}><NavigationContainer ref={userNav} onReady={() => setRoute(activeRoute(userNav.getRootState()))} onStateChange={(st) => setRoute(activeRoute(st))} theme={navTheme as any}>
           <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
             <Stack.Screen name="Tabs" component={Tabs} />
             <Stack.Screen name="Post" component={PostScreen} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
@@ -108,7 +142,7 @@ function Root() {
             <Stack.Screen name="Account">{(p) => <Account {...p} onLogout={logout} />}</Stack.Screen>
             <Stack.Screen name="New" component={Compose} />
           </Stack.Navigator>
-        </NavigationContainer></AppWidth>
+        </NavigationContainer></UserFrame></AppWidth>
       )}
     </>
   );

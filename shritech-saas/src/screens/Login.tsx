@@ -2,7 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, KeyboardAvoidingView, Linking, Platform, ScrollView, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import QRCode from 'react-native-qrcode-svg';
-import { Btn, Card, Field, Hero, Logo, Press, Rise, Seg, T } from '../ui';
+import { Btn, Card, Field, Hero, Logo, Press, Rise, Seg, T, useWide } from '../ui';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme, F } from '../theme';
 import { adminForgot, adminLogin, adminReset, adminSetup, adminStatus, adminTotp, AdminStep, enterDemo, loginPassword, requestCode, verifyCode } from '../api';
 
@@ -27,7 +28,7 @@ function CodeBoxes({ value, onChange, auto, max = 6 }: { value: string; onChange
 }
 
 export default function Login({ onDone, onBack }: { onDone: (role: 'user' | 'admin') => void; onBack?: () => void }) {
-  const { t } = useTheme();
+  const { t } = useTheme(); const wide = useWide();
   const [mode, setMode] = useState<'user' | 'admin'>('user');
   const [err, setErr] = useState(''); const [busy, setBusy] = useState(false); const [info, setInfo] = useState('');
   // user
@@ -63,22 +64,7 @@ export default function Login({ onDone, onBack }: { onDone: (role: 'user' | 'adm
   const aTotp = () => run(async () => { if (!step) return; await adminTotp(step.token, totp); onDone('admin'); });
   useEffect(() => { if (step && totp.length === 6 && !busy) aTotp(); }, [totp]);
 
-  return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: t.bg }}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
-        <Hero height={330}>
-          <View style={{ alignItems: 'center', marginTop: 20, gap: 12 }}>
-            <Animated.View style={{ transform: [{ scale: pop }] }}>
-              <View style={{ width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(255,255,255,0.14)', alignItems: 'center', justifyContent: 'center' }}>
-                <Animated.View style={{ position: 'absolute', width: 100, height: 100, borderRadius: 50, borderWidth: 3, borderColor: '#FACC15', borderStyle: 'dashed', transform: [{ rotate: spin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }] }} />
-                <Ionicons name={mode === 'admin' ? 'shield-checkmark' : 'rocket'} size={46} color="#FACC15" />
-              </View>
-            </Animated.View>
-            <Rise i={2}><Logo size={36} light /></Rise>
-            <Rise i={3}><T w="m" size={14} c="rgba(255,255,255,0.9)" style={{ textAlign: 'center' }}>AutoPost · Facebook + Instagram on autopilot</T></Rise>
-          </View>
-        </Hero>
-        <View style={{ paddingHorizontal: 18, marginTop: -50, gap: 14 }}>
+  const formBody = (<>
           <Rise i={4}>
             <Animated.View style={{ transform: [{ translateX: shake }] }}>
               <Card style={{ gap: 14, padding: 20 }}>
@@ -153,6 +139,48 @@ export default function Login({ onDone, onBack }: { onDone: (role: 'user' | 'adm
           {mode === 'user' ? <Rise i={6}><Btn title="Try demo (sample data)" kind="outline" icon="sparkles-outline" onPress={async () => { await enterDemo(); onDone('user'); }} /></Rise> : null}
           {onBack ? <Press onPress={onBack}><T w="s" size={13} c={t.green} style={{ textAlign: 'center' }}>← Back to home</T></Press> : null}
           <Rise i={7}><T s="mut" size={12} style={{ textAlign: 'center' }}>Shri Balaji Digital Services · 📞 99936 15146</T></Rise>
+  </>);
+  if (wide) return (
+    <View style={{ flex: 1, flexDirection: 'row', backgroundColor: t.bg }}>
+      <LinearGradient colors={t.grad as any} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ flex: 1.1, paddingHorizontal: 64, paddingVertical: 48, justifyContent: 'center', overflow: 'hidden' }}>
+        <View style={{ position: 'absolute', width: 420, height: 420, borderRadius: 210, backgroundColor: 'rgba(250,204,21,0.16)', top: -120, right: -120 }} />
+        <View style={{ position: 'absolute', width: 300, height: 300, borderRadius: 150, backgroundColor: 'rgba(255,255,255,0.07)', bottom: -100, left: -80 }} />
+        <View style={{ maxWidth: 520, gap: 18 }}>
+          <Logo size={44} light />
+          <T w="b" size={38} c="#fff" style={{ lineHeight: 48 }}>Facebook & Instagram on autopilot.</T>
+          <T size={16} c="rgba(255,255,255,0.85)" style={{ lineHeight: 26 }}>Plan a whole month of reels, post on time automatically, and reply to every comment in DM — all from one place.</T>
+          <View style={{ gap: 12, marginTop: 8 }}>
+            {([['calendar', 'Schedule posts and reels for the whole month'], ['logo-instagram', 'Facebook Page + Instagram together, with collabs'], ['chatbubbles', 'Auto DM replies to comments and story replies'], ['shield-checkmark', 'Secure login · your data stays private']] as const).map(([i, l]) => (
+              <View key={l} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <View style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.14)', alignItems: 'center', justifyContent: 'center' }}><Ionicons name={i as any} size={18} color="#FACC15" /></View>
+                <T w="m" size={15} c="#fff">{l}</T>
+              </View>
+            ))}
+          </View>
+        </View>
+      </LinearGradient>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 40 }} keyboardShouldPersistTaps="handled">
+        <View style={{ width: '100%', maxWidth: 460, gap: 14 }}>{formBody}</View>
+      </ScrollView>
+    </View>
+  );
+  return (
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: t.bg }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+        <Hero height={330}>
+          <View style={{ alignItems: 'center', marginTop: 20, gap: 12 }}>
+            <Animated.View style={{ transform: [{ scale: pop }] }}>
+              <View style={{ width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(255,255,255,0.14)', alignItems: 'center', justifyContent: 'center' }}>
+                <Animated.View style={{ position: 'absolute', width: 100, height: 100, borderRadius: 50, borderWidth: 3, borderColor: '#FACC15', borderStyle: 'dashed', transform: [{ rotate: spin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }] }} />
+                <Ionicons name={mode === 'admin' ? 'shield-checkmark' : 'rocket'} size={46} color="#FACC15" />
+              </View>
+            </Animated.View>
+            <Rise i={2}><Logo size={36} light /></Rise>
+            <Rise i={3}><T w="m" size={14} c="rgba(255,255,255,0.9)" style={{ textAlign: 'center' }}>AutoPost · Facebook + Instagram on autopilot</T></Rise>
+          </View>
+        </Hero>
+        <View style={{ paddingHorizontal: 18, marginTop: -50, gap: 14 }}>
+          {formBody}
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

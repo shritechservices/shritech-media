@@ -27,7 +27,7 @@ export default function RuleScreen({ route, navigation }: any) {
   };
   const tillOpts = [{ l: 'No end date', v: null }, { l: '7 days', v: dayKey(Date.now() + 7 * 86400000) }, { l: '30 days', v: dayKey(Date.now() + 30 * 86400000) }];
   return (
-    <Screen header={
+    <Screen narrow header={
       <Hero>
         <Press onPress={() => navigation.goBack()} style={{ marginBottom: 8 }}><Ionicons name="arrow-back" size={24} color="#fff" /></Press>
         <T w="b" size={24} c="#fff">{r ? 'Edit rule' : 'New auto reply'}</T>

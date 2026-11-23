@@ -3,7 +3,7 @@ import { View, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect } from '@react-navigation/native';
-import { Btn, Card, Empty, Field, Hero, Press, Rise, Screen, Seg, Skel, T, Thumb, useConfirm, useToast } from '../ui';
+import { Btn, Card, Empty, Field, Hero, Press, Rise, Screen, Seg, Skel, T, Thumb, useConfirm, useToast, useWide, useContentWidth } from '../ui';
 import { useTheme } from '../theme';
 import { api, uploadFile } from '../api';
 import type { Media } from '../types';
@@ -27,7 +27,9 @@ export default function Library({ navigation }: any) {
     if (!(await confirm({ title: 'Remove this file?', msg: 'It will be removed from your library.', ok: 'Remove', danger: true }))) return;
     try { await api('delete_media', { id: m.id }); toast('Removed'); load(); } catch (e: any) { toast(e.message, false); }
   };
-  const col = Math.floor((Math.min(width, 700) - 32 - 12) / 2);
+  const wide = useWide(); const cw = useContentWidth();
+  const n = wide ? Math.max(3, Math.floor((cw + 16) / 210)) : 2; const gap = wide ? 16 : 12;
+  const col = Math.floor((cw - gap * (n - 1)) / n);
   return (
     <Screen onRefresh={() => load(true)} refreshing={ref} header={
       <Hero><T w="b" size={24} c="#fff">Media library</T><T size={13} c="rgba(255,255,255,0.85)">Your reels and images, ready to schedule</T></Hero>
@@ -36,7 +38,7 @@ export default function Library({ navigation }: any) {
         <Card style={{ gap: 12 }}>
           <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
             <View style={{ width: 48, height: 48, borderRadius: 16, backgroundColor: t.goldSoft, alignItems: 'center', justifyContent: 'center' }}><Ionicons name="cloud-upload" size={24} color={t.gold} /></View>
-            <View style={{ flex: 1 }}><T w="b" size={15}>Upload from your phone</T><T s="mut" size={12}>Reels (MP4, 9:16, up to 50 MB) or JPG / PNG</T></View>
+            <View style={{ flex: 1 }}><T w="b" size={15}>{wide ? 'Upload a file' : 'Upload from your phone'}</T><T s="mut" size={12}>Reels (MP4, 9:16, up to 50 MB) or JPG / PNG</T></View>
           </View>
           <Field value={title} onChange={setTitle} placeholder="Title (optional) e.g. Diwali reel" />
           {up > 0 ? (
@@ -51,7 +53,7 @@ export default function Library({ navigation }: any) {
       {loading ? <View style={{ flexDirection: 'row', gap: 12 }}><View style={{ flex: 1 }}><Skel h={240} /></View><View style={{ flex: 1 }}><Skel h={240} /></View></View>
         : items.length === 0 ? <Card><Empty icon="images-outline" title="No files here yet" sub={all === 'month' ? 'Older files are under “All files”.' : 'Upload your first reel above.'} /></Card>
           : (
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap }}>
               {items.map((m, i) => (
                 <Rise key={m.id} i={i % 8} style={{ width: col }}>
                   <Card pad={0} style={{ overflow: 'hidden' }}>

@@ -3,7 +3,7 @@ import { Image, Linking, View, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Btn, Card, PlatformIcons, Pill, Press, Rise, T, useConfirm, useStatus, useToast } from '../ui';
+import { Btn, Card, PlatformIcons, Pill, Press, Rise, T, useConfirm, useStatus, useToast, useWide } from '../ui';
 import { useTheme } from '../theme';
 import { api, previewUrl } from '../api';
 import { dateStr, timeStr } from '../time';
@@ -15,7 +15,7 @@ function Player({ url }: { url: string }) {
 }
 
 export default function PostScreen({ route, navigation }: any) {
-  const { t } = useTheme(); const ins = useSafeAreaInsets(); const stat = useStatus(); const toast = useToast(); const confirm = useConfirm();
+  const { t } = useTheme(); const ins = useSafeAreaInsets(); const stat = useStatus(); const toast = useToast(); const confirm = useConfirm(); const wide = useWide();
   const [p, setP] = useState<Post>(route.params.post); const [busy, setBusy] = useState('');
   const s = stat(p.status); const m = p.media;
   const act = async (k: string, fn: () => Promise<any>, msg: string, after?: Partial<Post>) => {
@@ -34,14 +34,16 @@ export default function PostScreen({ route, navigation }: any) {
 
   return (
     <View style={{ flex: 1, backgroundColor: t.bg }}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
-        <View style={{ height: 430, backgroundColor: '#000' }}>
+      <ScrollView contentContainerStyle={wide ? { padding: 32, paddingBottom: 56 } : { paddingBottom: 40 }}>
+        {wide ? <Press onPress={() => navigation.goBack()} style={{ alignSelf: 'center', width: '100%', maxWidth: 1040, flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 16 }}><Ionicons name="arrow-back" size={20} color={t.green} /><T w="s" size={14} c={t.green}>Back</T></Press> : null}
+        <View style={wide ? { flexDirection: 'row', gap: 28, alignItems: 'flex-start', alignSelf: 'center', width: '100%', maxWidth: 1040 } : undefined}>
+        <View style={wide ? { width: 360, height: 640, backgroundColor: '#000', borderRadius: 24, overflow: 'hidden' } : { height: 430, backgroundColor: '#000' }}>
           {m?.poster ? <Image source={m.poster} style={{ width: '100%', height: '100%' }} resizeMode="cover" /> : m?.kind === 'video' ? <Player url={previewUrl(m.public_url)} /> : m ? <Image source={m.local ?? { uri: m.public_url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" /> : null}
-          <Press onPress={() => navigation.goBack()} style={{ position: 'absolute', top: ins.top + 10, left: 14, width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center' }}>
+          <Press onPress={() => navigation.goBack()} style={{ display: wide ? 'none' : 'flex', position: 'absolute', top: ins.top + 10, left: 14, width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center' }}>
             <Ionicons name="chevron-down" size={24} color="#fff" />
           </Press>
         </View>
-        <View style={{ padding: 16, gap: 14, marginTop: -26 }}>
+        <View style={wide ? { flex: 1, gap: 16 } : { padding: 16, gap: 14, marginTop: -26 }}>
           <Rise>
             <Card style={{ gap: 10 }}>
               <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}><Pill label={s.label} color={s.c} bg={s.bg} icon={s.icon} size={12} /><PlatformIcons list={p.platforms} size={18} /></View>
@@ -82,6 +84,7 @@ export default function PostScreen({ route, navigation }: any) {
             </Rise>
           ) : null}
           {p.status === 'failed' || p.status === 'partial' ? <Rise i={3}><Btn title="Try again" icon="refresh" onPress={retry} loading={busy === 'retry'} /></Rise> : null}
+        </View>
         </View>
       </ScrollView>
     </View>

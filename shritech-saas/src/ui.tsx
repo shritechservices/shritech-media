@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, createContext, useContext, useCallback } from 'react';
-import { Animated, Easing, Pressable, StyleSheet, Text, TextInput, View, ViewStyle, TextStyle, ActivityIndicator, Platform, ScrollView, RefreshControl } from 'react-native';
+import { Animated, Easing, Pressable, StyleSheet, Text, TextInput, View, ViewStyle, TextStyle, ActivityIndicator, Platform, ScrollView, RefreshControl, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -7,6 +7,19 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { F, useTheme } from './theme';
 
 const nd = Platform.OS !== 'web';
+/** Desktop browser layout (sidebar + wide pages). Phones and the Expo app keep the mobile layout. */
+export const WIDE_AT = 980;
+export const SIDEBAR_W = 256;
+export function useWide() { const { width } = useWindowDimensions(); return Platform.OS === 'web' && width >= WIDE_AT; }
+/** Usable content width on desktop (after sidebar + page padding). */
+export function useContentWidth(max = 1200) { const { width } = useWindowDimensions(); const wide = useWide(); return wide ? Math.min(width - SIDEBAR_W - 64, max) : Math.min(width, 700) - 32; }
+/** Two columns on desktop, stacked on phones. */
+export function Cols({ left, right, ratio = 1.5, gap = 22 }: { left: React.ReactNode; right: React.ReactNode; ratio?: number; gap?: number }) {
+  const wide = useWide();
+  if (!wide) return <><View style={{ gap: 14 }}>{left}</View><View style={{ gap: 14 }}>{right}</View></>;
+  return <View style={{ flexDirection: 'row', gap, alignItems: 'flex-start' }}><View style={{ flex: ratio, gap: 16, minWidth: 0 }}>{left}</View><View style={{ flex: 1, gap: 16, minWidth: 0 }}>{right}</View></View>;
+}
+
 export const tap = () => { if (nd) Haptics.selectionAsync().catch(() => {}); };
 
 export function T({ children, s, size = 14, w = 'r', c, style, lines }: { children: React.ReactNode; s?: 'mut'; size?: number; w?: keyof typeof F; c?: string; style?: TextStyle | TextStyle[]; lines?: number }) {
@@ -28,7 +41,7 @@ export function Press({ onPress, children, style, disabled, haptic = true }: { o
   const go = (v: number) => Animated.spring(s, { toValue: v, useNativeDriver: nd, speed: 40, bounciness: 8 }).start();
   return (
     <Pressable style={pickOuter(style)} disabled={disabled} onPressIn={() => go(0.96)} onPressOut={() => go(1)} onPress={() => { if (haptic) tap(); onPress?.(); }}>
-      <Animated.View style={[style as any, (StyleSheet.flatten(style as any) as any)?.flex !== undefined ? { flex: undefined, flexGrow: 0, flexShrink: 0 } : null, { transform: [{ scale: s }], opacity: disabled ? 0.5 : 1 }, (StyleSheet.flatten(style as any) as any)?.position === 'absolute' ? { position: 'relative', top: 0, left: 0, right: undefined, bottom: undefined } : null]}>{children}</Animated.View>
+      <Animated.View style={[style as any, (StyleSheet.flatten(style as any) as any)?.flex !== undefined ? { flex: undefined, flexGrow: 1, flexShrink: 1, flexBasis: 'auto' } : null, { transform: [{ scale: s }], opacity: disabled ? 0.5 : 1 }, (StyleSheet.flatten(style as any) as any)?.position === 'absolute' ? { position: 'relative', top: 0, left: 0, right: undefined, bottom: undefined } : null]}>{children}</Animated.View>
     </Pressable>
   );
 }
@@ -109,8 +122,9 @@ export function Hero({ children, height }: { children: React.ReactNode; height?:
   const a = useRef(new Animated.Value(0)).current;
   useEffect(() => { Animated.loop(Animated.sequence([Animated.timing(a, { toValue: 1, duration: 4200, easing: Easing.inOut(Easing.sin), useNativeDriver: nd }), Animated.timing(a, { toValue: 0, duration: 4200, easing: Easing.inOut(Easing.sin), useNativeDriver: nd })])).start(); }, []);
   const tx = a.interpolate({ inputRange: [0, 1], outputRange: [-20, 30] });
+  const wide = useWide();
   return (
-    <LinearGradient colors={t.grad as any} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ paddingTop: ins.top + 14, paddingHorizontal: 18, paddingBottom: 26, borderBottomLeftRadius: 30, borderBottomRightRadius: 30, overflow: 'hidden', minHeight: height }}>
+    <LinearGradient colors={t.grad as any} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={wide ? { paddingVertical: 28, paddingHorizontal: 32, borderRadius: 26, overflow: 'hidden', minHeight: height ? Math.min(height, 200) : undefined } : { paddingTop: ins.top + 14, paddingHorizontal: 18, paddingBottom: 26, borderBottomLeftRadius: 30, borderBottomRightRadius: 30, overflow: 'hidden', minHeight: height }}>
       <Animated.View style={{ position: 'absolute', width: 220, height: 220, borderRadius: 110, backgroundColor: 'rgba(250,204,21,0.22)', top: -70, right: -50, transform: [{ translateX: tx }] }} />
       <Animated.View style={{ position: 'absolute', width: 160, height: 160, borderRadius: 80, backgroundColor: 'rgba(255,255,255,0.10)', bottom: -60, left: -30, transform: [{ translateY: tx }] }} />
       {children}
@@ -118,8 +132,18 @@ export function Hero({ children, height }: { children: React.ReactNode; height?:
   );
 }
 
-export function Screen({ children, onRefresh, refreshing, header, pad = true }: { children: React.ReactNode; onRefresh?: () => void; refreshing?: boolean; header?: React.ReactNode; pad?: boolean }) {
-  const { t } = useTheme();
+export function Screen({ children, onRefresh, refreshing, header, pad = true, narrow }: { children: React.ReactNode; onRefresh?: () => void; refreshing?: boolean; header?: React.ReactNode; pad?: boolean; narrow?: boolean }) {
+  const { t } = useTheme(); const wide = useWide();
+  if (wide) return (
+    <View style={{ flex: 1, backgroundColor: t.bg }}>
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 32, paddingTop: 28, paddingBottom: 56 }}>
+        <View style={{ width: '100%', maxWidth: narrow ? 920 : 1200, alignSelf: 'center', gap: 22 }}>
+          {header}
+          <View style={{ gap: 16 }}>{children}</View>
+        </View>
+      </ScrollView>
+    </View>
+  );
   return (
     <View style={{ flex: 1, backgroundColor: t.bg }}>
       <ScrollView contentContainerStyle={{ paddingBottom: 120 }} refreshControl={onRefresh ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={t.green} colors={[t.green]} /> : undefined} showsVerticalScrollIndicator={false}>
@@ -226,14 +250,15 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
   const a = useRef(new Animated.Value(0)).current;
   const ask = useCallback((x: ConfirmOpts) => new Promise<boolean>((res) => { setO({ ...x, res }); a.setValue(0); Animated.spring(a, { toValue: 1, useNativeDriver: nd, bounciness: 6 }).start(); }), []);
   const done = (v: boolean) => { o?.res(v); setO(null); };
+  const wide = useWide();
   return (
     <ConfirmCtx.Provider value={ask}>
       {children}
       <Modal transparent visible={!!o} animationType="fade" onRequestClose={() => done(false)}>
-        <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' }} onPress={() => done(false)}>
-          <Animated.View style={{ transform: [{ translateY: a.interpolate({ inputRange: [0, 1], outputRange: [300, 0] }) }] }}>
-            <Pressable onPress={() => {}} style={{ backgroundColor: t.card, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 22, paddingBottom: 38, gap: 12 }}>
-              <View style={{ alignSelf: 'center', width: 44, height: 5, borderRadius: 3, backgroundColor: t.line, marginBottom: 6 }} />
+        <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: wide ? 'center' : 'flex-end', alignItems: wide ? 'center' : 'stretch' }} onPress={() => done(false)}>
+          <Animated.View style={wide ? { width: 420, opacity: a, transform: [{ scale: a.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1] }) }] } : { transform: [{ translateY: a.interpolate({ inputRange: [0, 1], outputRange: [300, 0] }) }] }}>
+            <Pressable onPress={() => {}} style={wide ? { backgroundColor: t.card, borderRadius: 24, padding: 26, gap: 12, ...sh('#000', 0.25, 40, 12) } : { backgroundColor: t.card, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 22, paddingBottom: 38, gap: 12 }}>
+              {!wide ? <View style={{ alignSelf: 'center', width: 44, height: 5, borderRadius: 3, backgroundColor: t.line, marginBottom: 6 }} /> : null}
               <T w="b" size={19}>{o?.title}</T>
               {o?.msg ? <T s="mut" size={14}>{o.msg}</T> : null}
               <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>

@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Linking, View, Switch } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import { Btn, Card, CountUp, Empty, Field, Hero, Logo, Pill, PlatformIcons, Press, Rise, Screen, Seg, SectionTitle, Skel, T, Thumb, useConfirm, useStatus, useToast } from '../ui';
+import { Btn, Card, CountUp, Empty, Field, Hero, Logo, Pill, PlatformIcons, Press, Rise, Screen, Seg, SectionTitle, Skel, T, Thumb, useConfirm, useStatus, useToast, useWide } from '../ui';
 import { ThemePref, useTheme } from '../theme';
 import { api } from '../api';
 import { dateStr, timeStr } from '../time';
@@ -12,7 +12,7 @@ function useStatusColors() { const { t } = useTheme(); return (s: string) => (({
 
 // ================= Dashboard + business list =================
 export function AdminHome({ navigation }: any) {
-  const { t } = useTheme(); const sc = useStatusColors();
+  const { t } = useTheme(); const sc = useStatusColors(); const wide = useWide();
   const [ov, setOv] = useState<any>(null); const [list, setList] = useState<any[]>([]); const [loading, setLoading] = useState(true); const [ref, setRef] = useState(false);
   const [filter, setFilter] = useState<'all' | 'pending' | 'active' | 'paused'>('all'); const [q, setQ] = useState('');
   const load = useCallback(async (pull = false) => { if (pull) setRef(true); try { const [o, l] = await Promise.all([api('admin_overview'), api<any[]>('admin_tenants')]); setOv(o); setList(l); } catch { } finally { setLoading(false); setRef(false); } }, []);
@@ -27,14 +27,14 @@ export function AdminHome({ navigation }: any) {
   return (
     <Screen onRefresh={() => load(true)} refreshing={ref} header={
       <Hero>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', display: wide ? 'none' : 'flex' }}>
           <Logo size={26} light />
           <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
             <Pill label="ADMIN" color="#2A2000" bg="#FACC15" icon="shield-checkmark" />
             <Press onPress={() => navigation.navigate('AdminSettings')} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.16)', alignItems: 'center', justifyContent: 'center' }}><Ionicons name="settings-outline" size={21} color="#fff" /></Press>
           </View>
         </View>
-        <Rise i={1}><T w="b" size={24} c="#fff" style={{ marginTop: 16 }}>Control centre</T></Rise>
+        <Rise i={1}><T w="b" size={24} c="#fff" style={{ marginTop: wide ? 0 : 16 }}>Control centre</T></Rise>
         <Rise i={2}><T size={13} c="rgba(255,255,255,0.85)">{ov ? `${ov.users} users · ${ov.posted_30d} posted in 30 days · temp storage ${ov.temp_storage_mb} MB` : 'Loading…'}</T></Rise>
       </Hero>
     }>
@@ -45,7 +45,7 @@ export function AdminHome({ navigation }: any) {
       ) : null}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
         {loading ? [0, 1, 2, 3].map((i) => <View key={i} style={{ width: '48%' }}><Skel h={96} /></View>) : stats.map((s, i) => (
-          <Rise key={s.l} i={i} style={{ width: '48%', flexGrow: 1 }}>
+          <Rise key={s.l} i={i} style={{ width: wide ? '23%' : '48%', flexGrow: 1 }}>
             <Card pad={12} style={{ gap: 4 }}>
               <View style={{ width: 34, height: 34, borderRadius: 12, backgroundColor: s.bg, alignItems: 'center', justifyContent: 'center' }}><Ionicons name={s.i} size={18} color={s.c} /></View>
               <CountUp to={s.n} size={26} c={s.c} /><T s="mut" size={12}>{s.l}</T>
@@ -56,10 +56,10 @@ export function AdminHome({ navigation }: any) {
       <SectionTitle title="Businesses" action="+ Add business" onAction={() => navigation.navigate('AdminTenant', { tenant: null })} />
       <Field value={q} onChange={setQ} placeholder="Search name, email or page…" right={<Ionicons name="search" size={18} color={t.mut} />} />
       <Seg items={[{ v: 'all', label: 'All' }, { v: 'pending', label: 'Pending' }, { v: 'active', label: 'Active' }, { v: 'paused', label: 'Paused' }]} value={filter} onChange={setFilter} />
-      {loading ? <Skel h={90} /> : shown.length === 0 ? <Card><Empty icon="storefront-outline" title="No businesses yet" sub="When someone signs up with their email, they appear here as Pending." /></Card> : shown.map((x, i) => {
+      {loading ? <Skel h={90} /> : shown.length === 0 ? <Card><Empty icon="storefront-outline" title="No businesses yet" sub="When someone signs up with their email, they appear here as Pending." /></Card> : <View style={wide ? { flexDirection: 'row', flexWrap: 'wrap', gap: 16 } : { gap: 14 }}>{shown.map((x, i) => {
         const [c, bg, l] = sc(x.status);
         return (
-          <Rise key={x.id} i={i}>
+          <Rise key={x.id} i={i} style={wide ? { width: '48.5%' } : undefined}>
             <Press onPress={() => navigation.navigate('AdminTenant', { tenant: x })}>
               <Card pad={14} style={{ gap: 8 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
@@ -76,7 +76,7 @@ export function AdminHome({ navigation }: any) {
             </Press>
           </Rise>
         );
-      })}
+      })}</View>}
     </Screen>
   );
 }
@@ -107,7 +107,7 @@ export function AdminTenant({ navigation, route }: any) {
   const addUser = async () => { try { const u = await api<any>('admin_user_save', { email: newU, tenant_id: id, role: users.length ? 'member' : 'owner' }); setUsers((o) => [...o.filter((y) => y.email !== u.email), u]); setNewU(''); toast('User added'); } catch (e: any) { toast(e.message, false); } };
   const toggleUser = async (u: any) => { try { const r = await api<any>('admin_user_save', { email: u.email, tenant_id: id, role: u.role, active: !u.active }); setUsers((o) => o.map((y) => (y.email === r.email ? r : y))); } catch (e: any) { toast(e.message, false); } };
   return (
-    <Screen header={
+    <Screen narrow header={
       <Hero>
         <Press onPress={() => navigation.goBack()} style={{ marginBottom: 8 }}><Ionicons name="arrow-back" size={24} color="#fff" /></Press>
         <T w="b" size={24} c="#fff">{isNew && !id ? 'Add business' : f.name || 'Business'}</T>
@@ -196,6 +196,7 @@ export function AdminTenant({ navigation, route }: any) {
 
 // ================= Admin settings =================
 export function AdminSettings({ navigation, onLogout }: any) {
+  const wide = useWide();
   const { t, pref, setPref } = useTheme(); const toast = useToast(); const confirm = useConfirm();
   const [st, setSt] = useState<any>(null); const [codes, setCodes] = useState<any[]>([]);
   const [old, setOld] = useState(''); const [nw, setNw] = useState(''); const [busy, setBusy] = useState('');
@@ -205,7 +206,7 @@ export function AdminSettings({ navigation, onLogout }: any) {
   const changePw = async () => { setBusy('pw'); try { await api('admin_change_password', { old, password: nw }); setOld(''); setNw(''); toast('Password changed'); } catch (e: any) { toast(e.message, false); } finally { setBusy(''); } };
   const out = async () => { if (await confirm({ title: 'Log out of admin?', ok: 'Log out' })) { try { await api('logout'); } catch { } onLogout(); } };
   return (
-    <Screen header={<Hero><Press onPress={() => navigation.goBack()} style={{ marginBottom: 8 }}><Ionicons name="arrow-back" size={24} color="#fff" /></Press><T w="b" size={24} c="#fff">Admin settings</T></Hero>}>
+    <Screen narrow header={<Hero>{!wide ? <Press onPress={() => navigation.goBack()} style={{ marginBottom: 8 }}><Ionicons name="arrow-back" size={24} color="#fff" /></Press> : null}<T w="b" size={24} c="#fff">Admin settings</T></Hero>}>
       <Rise>
         <Card style={{ gap: 12 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}><T w="b" size={16}>Login code emails</T>{st ? <Pill label={st.email_ready ? 'WORKING' : 'CHECK'} color={st.email_ready ? t.green : t.gold} bg={st.email_ready ? t.chip : t.goldSoft} /> : null}</View>

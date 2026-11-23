@@ -1,15 +1,16 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Platform, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Card, Empty, Hero, PlatformIcons, Pill, Press, Rise, Screen, Skel, T, Thumb, useStatus, Btn } from '../ui';
+import { Card, Empty, Hero, PlatformIcons, Pill, Press, Rise, Screen, Skel, T, Thumb, useStatus, Btn, Cols, useWide } from '../ui';
 import { useTheme } from '../theme';
 import { useOverview } from '../data';
 import { dayKey, MONTHS, monthStartISO, nowYM, timeStr, ist, dateStr } from '../time';
 
 const W7 = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+const W7L = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 export default function Calendar({ navigation, route }: any) {
-  const { t } = useTheme(); const stat = useStatus();
+  const { t } = useTheme(); const stat = useStatus(); const wide = useWide(); const CH = wide ? 96 : 52;
   const [ym, setYm] = useState(nowYM());
   const todayK = dayKey(Date.now());
   const [sel, setSel] = useState<string>(route?.params?.day ?? todayK);
@@ -42,25 +43,33 @@ export default function Calendar({ navigation, route }: any) {
         <T size={13} c="rgba(255,255,255,0.85)">{monthCount} scheduled this month · {ov.upcoming} in total · India time</T>
       </Hero>
     }>
+      <Cols ratio={2.1} left={<>
       <Rise>
-        <Card pad={14}>
+        <Card pad={wide ? 20 : 14}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
             <Press onPress={() => move(-1)} style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: t.card2, alignItems: 'center', justifyContent: 'center' }}><Ionicons name="chevron-back" size={20} color={t.text} /></Press>
             <Press onPress={() => { setYm(nowYM()); setSel(todayK); }}><T w="b" size={17}>{MONTHS[ym.m]} {ym.y}</T></Press>
             <Press onPress={() => move(1)} style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: t.card2, alignItems: 'center', justifyContent: 'center' }}><Ionicons name="chevron-forward" size={20} color={t.text} /></Press>
           </View>
-          <View style={{ flexDirection: 'row' }}>{W7.map((d, i) => <T key={i} s="mut" w="s" size={12} style={{ flex: 1, textAlign: 'center' }}>{d}</T>)}</View>
+          <View style={{ flexDirection: 'row' }}>{(wide ? W7L : W7).map((d, i) => <T key={i} s="mut" w="s" size={12} style={{ flex: 1, textAlign: 'center' }}>{d}</T>)}</View>
           <Animated.View style={{ opacity: fade, flexDirection: 'row', flexWrap: 'wrap', marginTop: 6 }}>
             {cells.map((d, i) => {
-              if (!d) return <View key={i} style={{ width: `${100 / 7}%`, height: 52 }} />;
+              if (!d) return <View key={i} style={{ width: `${100 / 7}%`, height: CH }} />;
               const k = key(d); const ps = (byDay[k] ?? []).filter((p) => p.status !== 'cancelled'); const on = k === sel; const today = k === todayK; const past = k < todayK;
               return (
-                <View key={i} style={{ width: `${100 / 7}%`, height: 52, padding: 2 }}>
-                  <Press onPress={() => setSel(k)} haptic style={{ flex: 1, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: on ? t.green : today ? t.goldSoft : 'transparent', borderWidth: today && !on ? 1.5 : 0, borderColor: t.gold }}>
+                <View key={i} style={{ width: `${100 / 7}%`, height: CH, padding: wide ? 3 : 2 }}>
+                  <Press onPress={() => setSel(k)} haptic style={{ flex: 1, borderRadius: 14, alignItems: wide ? 'flex-start' : 'center', justifyContent: wide ? 'flex-start' : 'center', padding: wide ? 8 : 0, ...(wide && !on && !today ? { borderWidth: 1, borderColor: t.line } : {}), backgroundColor: on ? t.green : today ? t.goldSoft : 'transparent', borderWidth: today && !on ? 1.5 : 0, borderColor: t.gold }}>
                     <T w={on || today ? 'b' : 'm'} size={14} c={on ? t.onGreen : past ? t.mut : t.text}>{d}</T>
+                    {wide ? (
+                      <View style={{ gap: 3, marginTop: 4, width: '100%' }}>
+                        {ps.slice(0, 2).map((p) => <View key={p.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: on ? 'rgba(255,255,255,0.2)' : p.status === 'failed' ? t.redSoft : p.media?.kind === 'image' ? t.goldSoft : t.chip, borderRadius: 6, paddingHorizontal: 5, paddingVertical: 2 }}><T w="s" size={10} c={on ? '#fff' : p.status === 'failed' ? t.red : p.media?.kind === 'image' ? t.gold : t.green} lines={1} style={{ flex: 1 }}>{timeStr(p.scheduled_at)} {p.title || p.media?.title || ''}</T></View>)}
+                        {ps.length > 2 ? <T size={10} c={on ? '#fff' : t.mut}>+{ps.length - 2} more</T> : null}
+                      </View>
+                    ) : (
                     <View style={{ flexDirection: 'row', gap: 2, height: 6, marginTop: 1 }}>
                       {ps.slice(0, 3).map((p) => <View key={p.id} style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: on ? '#fff' : p.status === 'failed' ? t.red : p.media?.kind === 'image' ? t.gold : t.green }} />)}
                     </View>
+                    )}
                   </Press>
                 </View>
               );
@@ -74,6 +83,7 @@ export default function Calendar({ navigation, route }: any) {
         </Card>
       </Rise>
 
+      </>} right={<>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <T w="b" size={17}>{sel === todayK ? 'Today' : dateStr(sel + 'T06:30:00Z')}</T>
         {!isPast ? <Btn small title="Add post" icon="add" kind="gold" onPress={() => navigation.navigate('New', { day: sel })} /> : null}
@@ -98,6 +108,7 @@ export default function Calendar({ navigation, route }: any) {
           </Rise>
         );
       })}
+      </>} />
     </Screen>
   );
 }
