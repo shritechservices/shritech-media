@@ -1,0 +1,46 @@
+{
+  "expo": {
+    "name": "ShriTech AutoPost",
+    "slug": "shritech-autopost",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "scheme": "shritech",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F6FBF4"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.shritech.autopost",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Choose reels and images to upload to your posting library."
+      }
+    },
+    "android": {
+      "package": "com.shritech.autopost",
+      "adaptiveIcon": {
+        "backgroundColor": "#14532D",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-video",
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Choose reels and images to upload to your posting library."
+        }
+      ]
+    ]
+  }
+}
