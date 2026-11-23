@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Linking, View, Switch } from 'react-native';
+import { Linking, Platform, Share, View, Switch } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { Btn, Card, CountUp, Empty, Field, Hero, Logo, Pill, PlatformIcons, Press, Rise, Screen, Seg, SectionTitle, Skel, T, Thumb, useConfirm, useStatus, useToast, useWide } from '../ui';
@@ -8,6 +8,40 @@ import { api } from '../api';
 import { dateStr, timeStr } from '../time';
 
 const STATUS = ['pending', 'active', 'paused', 'closed'] as const;
+
+/** Copy text (web) or open the share sheet (phone) so it can be sent on WhatsApp. */
+async function copyOrShare(text: string): Promise<'copied' | 'shared'> {
+  if (Platform.OS === 'web' && typeof navigator !== 'undefined' && (navigator as any).clipboard) { await (navigator as any).clipboard.writeText(text); return 'copied'; }
+  await Share.share({ message: text }); return 'shared';
+}
+const CLIENT_GH_STEPS = (biz: string) => `Hello${biz ? ' ' + biz : ''} 🙏
+To store your reels & images safely in your own free GitHub space, please do this once (about 5 minutes):
+
+1️⃣ Go to https://github.com/signup and create a free account (or log in).
+2️⃣ Click the + (top right) → "New repository".
+   • Name: ${biz ? biz.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-media' : 'yourbusiness-media'}
+   • Choose "Public"  ✅ (needed so Facebook & Instagram can fetch your videos)
+   • Tick "Add a README file"  → click "Create repository"
+3️⃣ In that repository: Settings → Collaborators → "Add people" → type  shritechservices  → "Add to repository".
+4️⃣ Send us your repository name on WhatsApp, like:  yourusername/yourbusiness-media
+
+That's all — ShriTech will do the rest. 📞 99936 15146`;
+const GH_STATUS: Record<string, { l: string; i: any }> = { ok: { l: 'CONNECTED', i: 'checkmark-circle' }, waiting: { l: 'WAITING FOR INVITE', i: 'time' }, error: { l: 'PROBLEM', i: 'alert-circle' } };
+
+function Steps({ title, steps }: { title: string; steps: string[] }) {
+  const { t } = useTheme();
+  return (
+    <View style={{ backgroundColor: t.card2, borderRadius: 14, padding: 12, gap: 8, borderWidth: 1, borderColor: t.line }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><Ionicons name="list-circle-outline" size={18} color={t.green} /><T w="b" size={13}>{title}</T></View>
+      {steps.map((x, i) => (
+        <View key={i} style={{ flexDirection: 'row', gap: 8 }}>
+          <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: t.chip, alignItems: 'center', justifyContent: 'center' }}><T w="b" size={11} c={t.green}>{i + 1}</T></View>
+          <T size={12} style={{ flex: 1, lineHeight: 18 }}>{x}</T>
+        </View>
+      ))}
+    </View>
+  );
+}
 function useStatusColors() { const { t } = useTheme(); return (s: string) => (({ active: [t.green, t.chip, 'Active'], pending: [t.gold, t.goldSoft, 'Pending'], paused: [t.red, t.redSoft, 'Paused'], closed: [t.mut, t.card2, 'Closed'] } as any)[s] ?? [t.mut, t.card2, s]); }
 
 // ================= Dashboard + business list =================
@@ -88,6 +122,11 @@ export function AdminTenant({ navigation, route }: any) {
   const [f, setF] = useState<any>({ name: x?.name ?? '', status: x?.status ?? 'pending', plan: x?.plan ?? 'starter', post_quota: String(x?.post_quota ?? 60), valid_till: x?.valid_till ?? '', page_id: x?.page_id ?? '', ig_user_id: x?.ig_user_id ?? '', page_token: '', graph_version: x?.graph_version ?? 'v25.0', default_caption: x?.default_caption ?? '', admin_note: x?.admin_note ?? '', contact_phone: x?.contact_phone ?? '', owner_email: '' });
   const [id, setId] = useState<string | null>(x?.id ?? null); const [hint, setHint] = useState<string>(x?.token_hint ?? ''); const [test, setTest] = useState<any>(null);
   const [busy, setBusy] = useState(''); const [posts, setPosts] = useState<any[]>([]); const [users, setUsers] = useState<any[]>(x?.users ?? []); const [newU, setNewU] = useState('');
+  const [ghs, setGhs] = useState<any>({ gh_repo: x?.gh_repo ?? null, gh_branch: x?.gh_branch ?? null, gh_status: x?.gh_status ?? null, gh_note: x?.gh_note ?? null, gh_checked_at: x?.gh_checked_at ?? null });
+  const [ghRepo, setGhRepo] = useState<string>(x?.gh_repo ?? ''); const [ghBranch, setGhBranch] = useState<string>(x?.gh_branch ?? '');
+  const ghCheck = async () => { if (!id) return; setBusy('gh'); try { const r = await api<any>('admin_tenant_github', { id, repo: ghRepo, branch: ghBranch }); setGhs(r); setGhRepo(r.gh_repo ?? ghRepo); setGhBranch(r.gh_branch ?? ''); toast(r.gh_status === 'ok' ? 'GitHub storage connected ✅' : r.gh_status === 'waiting' ? 'Waiting for the client’s invite' : 'Please check the note below', r.gh_status === 'ok'); } catch (e: any) { toast(e.message, false); } finally { setBusy(''); } };
+  const ghClear = async () => { if (!id) return; setBusy('ghc'); try { const r = await api<any>('admin_tenant_github_clear', { id }); setGhs(r); setGhRepo(''); setGhBranch(''); toast('Now using ShriTech storage'); } catch (e: any) { toast(e.message, false); } finally { setBusy(''); } };
+  const ghShare = async () => { try { const how = await copyOrShare(CLIENT_GH_STEPS(f.name)); if (how === 'copied') toast('Steps copied — paste them in WhatsApp'); } catch { } };
   const set = (k: string) => (v: string) => setF((o: any) => ({ ...o, [k]: v }));
   useEffect(() => { if (id) api<any[]>('admin_tenant_posts', { id }).then(setPosts).catch(() => {}); }, [id]);
   const save = async (extra: any = {}) => {
@@ -159,6 +198,41 @@ export function AdminTenant({ navigation, route }: any) {
       </Rise>
       {id ? (
         <Rise i={2}>
+          <Card style={{ gap: 12 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><Ionicons name="logo-github" size={20} color={t.text} /><T w="b" size={16}>Storage (GitHub)</T></View>
+              {ghs.gh_status && GH_STATUS[ghs.gh_status] ? <Pill label={GH_STATUS[ghs.gh_status].l} icon={GH_STATUS[ghs.gh_status].i} color={ghs.gh_status === 'ok' ? t.green : ghs.gh_status === 'waiting' ? t.gold : t.red} bg={ghs.gh_status === 'ok' ? t.chip : ghs.gh_status === 'waiting' ? t.goldSoft : t.redSoft} /> : <Pill label="SHRITECH STORAGE" color={t.mut} bg={t.card2} />}
+            </View>
+            <T s="mut" size={12}>{ghs.gh_status === 'ok' ? 'New reels and images of this business are saved in their own GitHub repository.' : 'Until connected, this business’s files are saved in ShriTech storage. Posting works either way.'}</T>
+            <Field label="Client repository (username/repository-name)" value={ghRepo} onChange={setGhRepo} placeholder="e.g. guptastore/guptastore-media" />
+            <Field label="Branch (leave empty for default)" value={ghBranch} onChange={setGhBranch} placeholder="main" />
+            {ghs.gh_note ? (
+              <View style={{ flexDirection: 'row', gap: 8, backgroundColor: ghs.gh_status === 'ok' ? t.chip : ghs.gh_status === 'waiting' ? t.goldSoft : t.redSoft, borderRadius: 12, padding: 10 }}>
+                <Ionicons name={GH_STATUS[ghs.gh_status]?.i ?? 'information-circle'} size={18} color={ghs.gh_status === 'ok' ? t.green : ghs.gh_status === 'waiting' ? t.gold : t.red} />
+                <View style={{ flex: 1 }}><T size={12}>{ghs.gh_note}</T>{ghs.gh_checked_at ? <T s="mut" size={11}>Checked {dateStr(ghs.gh_checked_at, true)} · {timeStr(ghs.gh_checked_at)}</T> : null}</View>
+              </View>
+            ) : null}
+            <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
+              <Btn title="Check & connect" icon="git-network-outline" onPress={ghCheck} loading={busy === 'gh'} disabled={!ghRepo.trim()} style={{ flex: 1, minWidth: 240 }} />
+              {ghs.gh_repo ? <Btn title="Use ShriTech storage" kind="outline" icon="arrow-undo-outline" onPress={ghClear} loading={busy === 'ghc'} style={{ flex: 1, minWidth: 240 }} /> : null}
+            </View>
+            <Steps title="What the client does (once)" steps={[
+              'Create a free account at github.com/signup (or log in).',
+              'Click + (top right) → New repository → give a name like “shopname-media” → choose PUBLIC → tick “Add a README file” → Create repository.',
+              'In that repository: Settings → Collaborators → Add people → type  shritechservices  → Add.',
+              'Send you the repository name on WhatsApp, e.g.  username/shopname-media.',
+            ]} />
+            <Btn small kind="outline" icon={Platform.OS === 'web' ? 'copy-outline' : 'share-social-outline'} title={Platform.OS === 'web' ? 'Copy steps for client (WhatsApp)' : 'Send steps to client'} onPress={ghShare} />
+            <Steps title="What you do after they send the name" steps={[
+              'Paste the repository name above (a full github.com link also works).',
+              'Tap “Check & connect” — it accepts the invite and tests saving a file automatically.',
+              'Green CONNECTED = done. Yellow WAITING = the client hasn’t added shritechservices yet. Red = read the note (usually: repository must be Public).',
+            ]} />
+          </Card>
+        </Rise>
+      ) : null}
+      {id ? (
+        <Rise i={3}>
           <Card style={{ gap: 10 }}>
             <T w="b" size={16}>Users</T>
             {users.map((u) => (
@@ -200,6 +274,9 @@ export function AdminSettings({ navigation, onLogout }: any) {
   const { t, pref, setPref } = useTheme(); const toast = useToast(); const confirm = useConfirm();
   const [st, setSt] = useState<any>(null); const [codes, setCodes] = useState<any[]>([]);
   const [old, setOld] = useState(''); const [nw, setNw] = useState(''); const [busy, setBusy] = useState('');
+  const [gh, setGh] = useState<any>(null); const [ghTok, setGhTok] = useState('');
+  useEffect(() => { api<any>('admin_github_get').then(setGh).catch(() => {}); }, []);
+  const saveGh = async () => { setBusy('gh'); try { const r = await api<any>('admin_github_save', { token: ghTok }); setGhTok(''); setGh(await api<any>('admin_github_get')); toast(`GitHub key saved ✅ (${r.login})`); } catch (e: any) { toast(e.message, false); } finally { setBusy(''); } };
   const load = useCallback(async () => { try { const s = await api<any>('admin_settings_get'); setSt(s); setCodes(await api<any[]>('admin_codes')); } catch { } }, []);
   useFocusEffect(useCallback(() => { load(); const iv = setInterval(() => api<any[]>('admin_codes').then(setCodes).catch(() => {}), 8000); return () => clearInterval(iv); }, [load]));
   const testEmail = async () => { setBusy('test'); try { const r = await api<any>('admin_test_email'); toast(r.via === 'supabase' ? 'Test code sent — check your Gmail' : 'Supabase could not send the email. Check Auth email settings.', r.via === 'supabase'); load(); } catch { toast('Email could not be sent. Check the key and sender.', false); } finally { setBusy(''); } };
@@ -228,11 +305,30 @@ export function AdminSettings({ navigation, onLogout }: any) {
       </Rise>
       <Rise i={2}>
         <Card style={{ gap: 12 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><Ionicons name="logo-github" size={20} color={t.text} /><T w="b" size={16}>GitHub key (client storage)</T></View>
+            {gh ? <Pill label={gh.saved ? 'SAVED' : 'NOT SET'} color={gh.saved ? t.green : t.gold} bg={gh.saved ? t.chip : t.goldSoft} /> : null}
+          </View>
+          <T s="mut" size={12}>Used to connect each client’s own GitHub repository and save their reels there. Saved only on the server — never shown again.</T>
+          {gh?.saved ? <T size={12}>Account: <T w="b" size={12}>{gh.login}</T> · key {gh.hint}{gh.saved_at ? ' · saved ' + dateStr(gh.saved_at, true) : ''}</T> : null}
+          <Field label={gh?.saved ? 'Replace key (optional)' : 'Paste GitHub key'} value={ghTok} onChange={setGhTok} secure placeholder="ghp_…" />
+          <Btn title="Save & check key" icon="key-outline" onPress={saveGh} loading={busy === 'gh'} disabled={ghTok.trim().length < 20} />
+          <Steps title="How to make the key (once)" steps={[
+            'Log in to GitHub as shritechservices → profile photo → Settings.',
+            'Left menu (bottom): Developer settings → Personal access tokens → Tokens (classic).',
+            'Generate new token → Generate new token (classic).',
+            'Note: “ShriTech AutoPost” · Expiration: No expiration · tick the “repo” box.',
+            'Click Generate token, copy it (starts with ghp_), paste it above and tap “Save & check key”.',
+          ]} />
+        </Card>
+      </Rise>
+      <Rise i={3}>
+        <Card style={{ gap: 12 }}>
           <T w="b" size={16}>Appearance</T>
           <Seg<ThemePref> items={[{ v: 'system', label: 'Auto', icon: 'phone-portrait-outline' }, { v: 'light', label: 'Light', icon: 'sunny-outline' }, { v: 'dark', label: 'Dark', icon: 'moon-outline' }]} value={pref} onChange={setPref} />
         </Card>
       </Rise>
-      <Rise i={3}>
+      <Rise i={4}>
         <Card style={{ gap: 12 }}>
           <T w="b" size={16}>Change admin password</T>
           <Field label="Old password" value={old} onChange={setOld} secure />
@@ -240,7 +336,7 @@ export function AdminSettings({ navigation, onLogout }: any) {
           <Btn title="Update password" kind="outline" icon="key-outline" onPress={changePw} loading={busy === 'pw'} />
         </Card>
       </Rise>
-      <Rise i={4}><Btn title="Log out" kind="red" icon="log-out-outline" onPress={out} /></Rise>
+      <Rise i={5}><Btn title="Log out" kind="red" icon="log-out-outline" onPress={out} /></Rise>
     </Screen>
   );
 }

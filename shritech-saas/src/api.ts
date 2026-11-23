@@ -23,7 +23,7 @@ export async function clearSession() { TOKEN = ''; DEMO = false; await AsyncStor
 async function saveSession(t: string, r: Role) { TOKEN = t; ROLE = r; DEMO = false; await AsyncStorage.multiSet([['sa_token', t], ['sa_role', r]]); await AsyncStorage.removeItem('sa_demo'); }
 
 // Friendly messages only — raw server errors are never shown.
-const KNOWN = ['not correct', 'expired', 'too many', 'wait a few', 'paused', 'being set up', 'not connected', 'used all', 'valid email', 'at least', 'already', 'only the owner', 'only failed', 'keyword', 'description is required', 'used by a scheduled', 'pick at least', 'choose a reel', 'setup key', 'log in again', 'contact shritech', 'wait a minute', 'enter the code', 'later time', 'please choose', 'invalid', 'too many', 'please try again'];
+const KNOWN = ['not correct', 'expired', 'too many', 'wait a few', 'paused', 'being set up', 'not connected', 'used all', 'valid email', 'at least', 'already', 'only the owner', 'only failed', 'keyword', 'description is required', 'used by a scheduled', 'pick at least', 'choose a reel', 'setup key', 'log in again', 'contact shritech', 'wait a minute', 'enter the code', 'later time', 'please choose', 'invalid', 'too many', 'please try again', 'github', 'please save', 'please enter', 'please paste'];
 export class ApiError extends Error {}
 
 export async function api<T = any>(action: string, data: Record<string, any> = {}, tok?: string): Promise<T> {

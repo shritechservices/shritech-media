@@ -1,5 +1,7 @@
-# Moves customer uploads from temporary Supabase storage into this GitHub repo (saas-media/),
-# then tells the SaaS backend to use the GitHub link and delete the temporary copy. Keeps Supabase usage low.
+# Moves customer uploads from temporary Supabase storage into GitHub, then tells the SaaS backend
+# to use the GitHub link and delete the temporary copy. Keeps Supabase usage low.
+# - Businesses with their own connected GitHub repo  -> uploaded to THEIR repo (saas-media/...)
+# - Everyone else                                     -> this repo (saas-media/...)
 name: SaaS media mover
 on:
   schedule: [{ cron: '*/10 * * * *' }]
@@ -21,16 +23,46 @@ jobs:
           [ -z "$K" ] && exit 0
           API=https://hnrhctlxreexefymfcct.supabase.co/functions/v1/saas-api
           curl -sf -X POST $API -H 'Content-Type: application/json' -H "x-mover-key: $K" -d '{"action":"mover_list"}' > list.json || exit 0
+          GT=$(jq -r '.gh_token // empty' list.json); [ -n "$GT" ] && echo "::add-mask::$GT"
+          jq 'del(.gh_token)' list.json > l2.json && mv l2.json list.json
           N=$(jq '.items|length' list.json); echo "items: $N"; [ "$N" = "0" ] && exit 0
-          mkdir -p saas-media
+          mkdir -p saas-media; : > done_client.jsonl; : > failed.jsonl
           jq -c '.items[]' list.json | while read -r it; do
             ID=$(echo "$it" | jq -r .id); P=$(echo "$it" | jq -r .path); U=$(echo "$it" | jq -r .public_url)
-            mkdir -p "saas-media/$(dirname "$P")"; curl -sfL "$U" -o "saas-media/$P" && echo "$ID saas-media/$P" >> moved.txt
+            R=$(echo "$it" | jq -r '.repo // empty'); B=$(echo "$it" | jq -r '.branch // "main"'); TID=$(echo "$it" | jq -r .tenant_id)
+            if [ -n "$R" ] && [ -n "$GT" ]; then
+              # Client's own repository: upload through the GitHub API
+              curl -sfL "$U" -o f.bin || continue
+              base64 -w0 f.bin > f.b64
+              jq -n --rawfile c f.b64 --arg b "$B" '{message:"ShriTech AutoPost media [skip ci]",content:$c,branch:$b}' > body.json
+              CODE=$(curl -s -o resp.json -w '%{http_code}' -X PUT "https://api.github.com/repos/$R/contents/saas-media/$P" \
+                -H "Authorization: token $GT" -H 'Accept: application/vnd.github+json' -H 'User-Agent: ShriTech-AutoPost' --data @body.json)
+              if [ "$CODE" = "201" ] || [ "$CODE" = "200" ]; then
+                SHA=$(jq -r .commit.sha resp.json)
+                jq -n --arg id "$ID" --arg gp "saas-media/$P" --arg r "$R" --arg u "https://raw.githubusercontent.com/$R/$SHA/saas-media/$P" '{id:$id,gh_path:$gp,url:$u,repo:$r}' >> done_client.jsonl
+              else
+                MSG=$(jq -r '.message // "error"' resp.json 2>/dev/null | head -c 150)
+                echo "upload to client repo failed ($CODE)"
+                jq -n --arg t "$TID" --arg r "$R" --arg e "HTTP $CODE $MSG" '{tenant_id:$t,repo:$r,error:$e}' >> failed.jsonl
+              fi
+              rm -f f.bin f.b64 body.json resp.json
+            else
+              mkdir -p "saas-media/$(dirname "$P")"; curl -sfL "$U" -o "saas-media/$P" && echo "$ID saas-media/$P" >> moved.txt
+            fi
           done
-          [ -f moved.txt ] || exit 0
-          git config user.name "shritech-bot"; git config user.email "actions@users.noreply.github.com"
-          git add saas-media && git commit -qm "saas media [skip ci]" && git pull --rebase -q && git push -q
-          SHA=$(git rev-parse HEAD)
-          ITEMS=$(while read -r ID GP; do jq -n --arg id "$ID" --arg gp "$GP" --arg u "https://raw.githubusercontent.com/${{ github.repository }}/$SHA/$GP" '{id:$id,gh_path:$gp,url:$u}'; done < moved.txt | jq -s .)
-          jq -n --argjson items "$ITEMS" '{action:"mover_done",items:$items}' > done.json
-          curl -sf -X POST $API -H 'Content-Type: application/json' -H "x-mover-key: $K" -d @done.json
+          ITEMS='[]'
+          if [ -f moved.txt ]; then
+            git config user.name "shritech-bot"; git config user.email "actions@users.noreply.github.com"
+            git add saas-media && git commit -qm "saas media [skip ci]" && git pull --rebase -q && git push -q
+            SHA=$(git rev-parse HEAD)
+            ITEMS=$(while read -r ID GP; do jq -n --arg id "$ID" --arg gp "$GP" --arg u "https://raw.githubusercontent.com/${{ github.repository }}/$SHA/$GP" '{id:$id,gh_path:$gp,url:$u}'; done < moved.txt | jq -s .)
+          fi
+          ALL=$(jq -s --argjson a "$ITEMS" '$a + .' done_client.jsonl)
+          if [ "$(echo "$ALL" | jq length)" != "0" ]; then
+            jq -n --argjson items "$ALL" '{action:"mover_done",items:$items}' > done.json
+            curl -sf -X POST $API -H 'Content-Type: application/json' -H "x-mover-key: $K" -d @done.json
+          fi
+          if [ -s failed.jsonl ]; then
+            jq -s '{action:"mover_fail",items:.}' failed.jsonl > fail.json
+            curl -sf -X POST $API -H 'Content-Type: application/json' -H "x-mover-key: $K" -d @fail.json
+          fi
