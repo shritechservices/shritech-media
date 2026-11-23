@@ -22,6 +22,7 @@ import Library from './src/screens/Library';
 import Replies from './src/screens/Replies';
 import PostScreen from './src/screens/Post';
 import RuleScreen from './src/screens/Rule';
+import Preview from './src/screens/Preview';
 import Account from './src/screens/Account';
 import { AdminHome, AdminTenant, AdminSettings } from './src/screens/Admin';
 
@@ -141,6 +142,7 @@ function Root() {
             <Stack.Screen name="Rule" component={RuleScreen} />
             <Stack.Screen name="Account">{(p) => <Account {...p} onLogout={logout} />}</Stack.Screen>
             <Stack.Screen name="New" component={Compose} />
+            <Stack.Screen name="Preview" component={Preview} options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
           </Stack.Navigator>
         </NavigationContainer></UserFrame></AppWidth>
       )}

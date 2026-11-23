@@ -57,7 +57,10 @@ export default function Library({ navigation }: any) {
               {items.map((m, i) => (
                 <Rise key={m.id} i={i % 8} style={{ width: col }}>
                   <Card pad={0} style={{ overflow: 'hidden' }}>
-                    <Thumb m={m} w="100%" h={col * 1.3} r={0} />
+                    <Press onPress={() => navigation.navigate('Preview', { m })} haptic={false}>
+                      <Thumb m={m} w="100%" h={col * 1.3} r={0} />
+                      {m.kind === 'video' ? <View pointerEvents="none" style={{ position: 'absolute', bottom: 8, right: 8, flexDirection: 'row', gap: 4, alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 99, paddingHorizontal: 9, paddingVertical: 4 }}><Ionicons name="play" size={12} color="#fff" /><T w="s" size={11} c="#fff">Play</T></View> : null}
+                    </Press>
                     <View style={{ padding: 10, gap: 8 }}>
                       <T w="s" size={13} lines={1}>{m.title || 'Untitled'}</T>
                       <View style={{ flexDirection: 'row', gap: 8 }}>

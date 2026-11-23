@@ -51,6 +51,8 @@ export type AdminStep = { token: string; stage: 'totp' | 'totp_enroll' | 'full';
 export const adminStatus = () => api<{ admin_exists: boolean }>('admin_status', {}, '');
 export const adminSetup = (setup_key: string, email: string, password: string) => api<AdminStep>('admin_setup', { setup_key, email, password }, '');
 export const adminLogin = (email: string, password: string) => api<AdminStep>('admin_login', { email, password }, '');
+export const userForgot = (email: string) => api('user_forgot', { email }, '');
+export const userReset = (email: string, code: string, password: string) => api('user_reset', { email, code, password }, '');
 export const adminForgot = (email: string) => api('admin_forgot', { email }, '');
 export const adminReset = (email: string, code: string, password: string) => api('admin_reset', { email, code, password }, '');
 export async function adminTotp(stepToken: string, code: string) { const r = await api<AdminStep>('admin_totp', { code }, stepToken); await saveSession(r.token, 'admin'); }

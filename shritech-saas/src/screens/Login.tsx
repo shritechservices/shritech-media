@@ -5,17 +5,17 @@ import QRCode from 'react-native-qrcode-svg';
 import { Btn, Card, Field, Hero, Logo, Press, Rise, Seg, T, useWide } from '../ui';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme, F } from '../theme';
-import { adminForgot, adminLogin, adminReset, adminSetup, adminStatus, adminTotp, AdminStep, enterDemo, loginPassword, requestCode, verifyCode } from '../api';
+import { userForgot, userReset, adminForgot, adminLogin, adminReset, adminSetup, adminStatus, adminTotp, AdminStep, enterDemo, loginPassword, requestCode, verifyCode } from '../api';
 
 function CodeBoxes({ value, onChange, auto, max = 6 }: { value: string; onChange: (v: string) => void; auto?: boolean; max?: number }) {
   const { t } = useTheme(); const ref = useRef<any>(null);
   return (
     <Press onPress={() => ref.current?.focus()} haptic={false}>
-      <View style={{ flexDirection: 'row', gap: 8, justifyContent: 'center' }}>
-        {Array.from({ length: Math.max(6, Math.min(max, value.length + (value.length >= 6 && value.length < max ? 1 : 0))) }).map((_, i) => {
+      <View style={{ flexDirection: 'row', gap: max > 6 ? 6 : 8, justifyContent: 'center' }}>
+        {Array.from({ length: max }).map((_, i) => {
           const on = i === value.length;
           return (
-            <View key={i} style={{ width: value.length > 6 ? 36 : 46, height: 56, borderRadius: 14, borderWidth: 2, borderColor: on ? t.green : t.line, backgroundColor: t.card2, alignItems: 'center', justifyContent: 'center' }}>
+            <View key={i} style={{ width: max > 6 ? 34 : 46, height: 54, borderRadius: 14, borderWidth: 2, borderColor: on ? t.green : t.line, backgroundColor: t.card2, alignItems: 'center', justifyContent: 'center' }}>
               <T w="b" size={24}>{value[i] ?? ''}</T>
             </View>
           );
@@ -59,8 +59,14 @@ export default function Login({ onDone, onBack }: { onDone: (role: 'user' | 'adm
     const r = hasAdmin === false ? await adminSetup(setupKey.trim(), aEmail.trim(), aPw) : await adminLogin(aEmail.trim(), aPw);
     setStep(r); setTotp('');
   });
-  const fSend = () => run(async () => { if (!/^\S+@\S+\.\S+$/.test(aEmail.trim())) throw new Error('Please enter your admin email'); await adminForgot(aEmail.trim()); setForgot(2); setRCode(''); });
-  const fReset = () => run(async () => { await adminReset(aEmail.trim(), rCode, rPw); setForgot(0); setAPw(''); setInfo('Password changed. Log in with the new password + Authenticator code.'); });
+  const fEmail = mode === 'admin' ? aEmail : email; const setFEmail = mode === 'admin' ? setAEmail : setEmail;
+  const fSend = () => run(async () => { const e = fEmail.trim(); if (!/^\S+@\S+\.\S+$/.test(e)) throw new Error('Please enter your email'); if (mode === 'admin') await adminForgot(e); else await userForgot(e); setForgot(2); setRCode(''); setRPw(''); });
+  const fReset = () => run(async () => {
+    if (rCode.length < 6) throw new Error('Enter the code from your email'); if (rPw.length < 8) throw new Error('Use at least 8 characters for the new password');
+    if (mode === 'admin') { await adminReset(fEmail.trim(), rCode, rPw); setAPw(''); setInfo('Password changed ✅ Log in with the new password + Authenticator code.'); }
+    else { await userReset(fEmail.trim(), rCode, rPw); setHow('pw'); setUPw(''); setInfo('Password changed ✅ Log in with your new password.'); }
+    setForgot(0);
+  });
   const aTotp = () => run(async () => { if (!step) return; await adminTotp(step.token, totp); onDone('admin'); });
   useEffect(() => { if (step && totp.length === 6 && !busy) aTotp(); }, [totp]);
 
@@ -69,7 +75,30 @@ export default function Login({ onDone, onBack }: { onDone: (role: 'user' | 'adm
             <Animated.View style={{ transform: [{ translateX: shake }] }}>
               <Card style={{ gap: 14, padding: 20 }}>
                 <Seg items={[{ v: 'user', label: 'Business', icon: 'storefront-outline' }, { v: 'admin', label: 'Admin', icon: 'shield-outline' }]} value={mode} onChange={(v) => { setMode(v); setStep(null); setForgot(0); }} />
-                {mode === 'user' ? (!sent ? (
+                {info && !forgot && !(mode === 'user' && sent) ? <View style={{ backgroundColor: t.chip, borderRadius: 12, padding: 10 }}><T w="m" size={13} c={t.green}>{info}</T></View> : null}
+                {forgot ? (
+                  <>
+                    <T w="b" size={20}>Reset password 🔑</T>
+                    {forgot === 1 ? (
+                      <>
+                        <T s="mut" size={13}>Enter your {mode === 'admin' ? 'admin ' : ''}email. We’ll send an 8-digit code to reset your password.</T>
+                        <Field label="Email" value={fEmail} onChange={setFEmail} placeholder="yourname@gmail.com" keyboard="email-address" />
+                        {err ? <T size={13} c={t.red}>{err}</T> : null}
+                        <Btn title="Send reset code" icon="mail-outline" onPress={fSend} loading={busy} />
+                      </>
+                    ) : (
+                      <>
+                        <T s="mut" size={13}>We sent a code to {fEmail.trim()}. Check Inbox and Spam.</T>
+                        <CodeBoxes value={rCode} onChange={setRCode} auto max={8} />
+                        <Field label="New password (8+ characters)" value={rPw} onChange={setRPw} secure placeholder="••••••••" />
+                        {err ? <T size={13} c={t.red}>{err}</T> : null}
+                        <Btn title="Change password" icon="checkmark-circle-outline" onPress={fReset} loading={busy} />
+                        <Press onPress={fSend}><T w="s" size={13} c={t.green} style={{ textAlign: 'center' }}>Send code again</T></Press>
+                      </>
+                    )}
+                    <Press onPress={() => { setForgot(0); setErr(''); }}><T w="s" size={13} c={t.green} style={{ textAlign: 'center' }}>← Back to login</T></Press>
+                  </>
+                ) : mode === 'user' ? (!sent ? (
                   <>
                     <T w="b" size={20}>Log in or sign up 👋</T>
                     <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -84,6 +113,7 @@ export default function Login({ onDone, onBack }: { onDone: (role: 'user' | 'adm
                     {how === 'code' ? <Field label="Business name (new accounts only)" value={biz} onChange={setBiz} placeholder="e.g. Gupta Sweets" /> : <Field label="Password" value={uPw} onChange={setUPw} secure placeholder="••••••••" />}
                     {err ? <T size={13} c={t.red}>{err}</T> : null}
                     {how === 'code' ? <Btn title="Send code" icon="mail-outline" onPress={send} loading={busy} /> : <Btn title="Log in" icon="log-in-outline" onPress={pwLogin} loading={busy} />}
+                    {how === 'pw' ? <Press onPress={() => { setForgot(1); setErr(''); }}><T w="s" size={13} c={t.green} style={{ textAlign: 'center' }}>Forgot password?</T></Press> : null}
                   </>
                 ) : (
                   <>

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Image, Linking, View, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useVideoPlayer, VideoView } from 'expo-video';
+import { ReelPlayer } from './Preview';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Btn, Card, PlatformIcons, Pill, Press, Rise, T, useConfirm, useStatus, useToast, useWide } from '../ui';
 import { useTheme } from '../theme';
@@ -9,10 +9,6 @@ import { api, previewUrl } from '../api';
 import { dateStr, timeStr } from '../time';
 import type { Post } from '../types';
 
-function Player({ url }: { url: string }) {
-  const player = useVideoPlayer(url, (p) => { p.loop = true; p.muted = false; });
-  return <VideoView player={player} style={{ width: '100%', height: '100%' }} contentFit="cover" nativeControls />;
-}
 
 export default function PostScreen({ route, navigation }: any) {
   const { t } = useTheme(); const ins = useSafeAreaInsets(); const stat = useStatus(); const toast = useToast(); const confirm = useConfirm(); const wide = useWide();
@@ -38,7 +34,7 @@ export default function PostScreen({ route, navigation }: any) {
         {wide ? <Press onPress={() => navigation.goBack()} style={{ alignSelf: 'center', width: '100%', maxWidth: 1040, flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 16 }}><Ionicons name="arrow-back" size={20} color={t.green} /><T w="s" size={14} c={t.green}>Back</T></Press> : null}
         <View style={wide ? { flexDirection: 'row', gap: 28, alignItems: 'flex-start', alignSelf: 'center', width: '100%', maxWidth: 1040 } : undefined}>
         <View style={wide ? { width: 360, height: 640, backgroundColor: '#000', borderRadius: 24, overflow: 'hidden' } : { height: 430, backgroundColor: '#000' }}>
-          {m?.poster ? <Image source={m.poster} style={{ width: '100%', height: '100%' }} resizeMode="cover" /> : m?.kind === 'video' ? <Player url={previewUrl(m.public_url)} /> : m ? <Image source={m.local ?? { uri: m.public_url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" /> : null}
+          {m?.poster ? <Image source={m.poster} style={{ width: '100%', height: '100%' }} resizeMode="cover" /> : m?.kind === 'video' ? <ReelPlayer url={m.public_url} /> : m ? <Image source={m.local ?? { uri: m.public_url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" /> : null}
           <Press onPress={() => navigation.goBack()} style={{ display: wide ? 'none' : 'flex', position: 'absolute', top: ins.top + 10, left: 14, width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center' }}>
             <Ionicons name="chevron-down" size={24} color="#fff" />
           </Press>
