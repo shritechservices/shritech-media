@@ -117,6 +117,7 @@ export function AdminHome({ navigation }: any) {
 
 // ================= Business detail / setup =================
 export function AdminTenant({ navigation, route }: any) {
+  const wide = useWide();
   const { t } = useTheme(); const toast = useToast(); const stat = useStatus(); const sc = useStatusColors();
   const x = route.params?.tenant; const isNew = !x;
   const [f, setF] = useState<any>({ name: x?.name ?? '', status: x?.status ?? 'pending', plan: x?.plan ?? 'starter', post_quota: String(x?.post_quota ?? 60), valid_till: x?.valid_till ?? '', page_id: x?.page_id ?? '', ig_user_id: x?.ig_user_id ?? '', page_token: '', graph_version: x?.graph_version ?? 'v25.0', default_caption: x?.default_caption ?? '', admin_note: x?.admin_note ?? '', contact_phone: x?.contact_phone ?? '', owner_email: '' });
@@ -212,9 +213,9 @@ export function AdminTenant({ navigation, route }: any) {
                 <View style={{ flex: 1 }}><T size={12}>{ghs.gh_note}</T>{ghs.gh_checked_at ? <T s="mut" size={11}>Checked {dateStr(ghs.gh_checked_at, true)} · {timeStr(ghs.gh_checked_at)}</T> : null}</View>
               </View>
             ) : null}
-            <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
-              <Btn title="Check & connect" icon="git-network-outline" onPress={ghCheck} loading={busy === 'gh'} disabled={!ghRepo.trim()} style={{ flex: 1, minWidth: 240 }} />
-              {ghs.gh_repo ? <Btn title="Use ShriTech storage" kind="outline" icon="arrow-undo-outline" onPress={ghClear} loading={busy === 'ghc'} style={{ flex: 1, minWidth: 240 }} /> : null}
+            <View style={{ flexDirection: wide ? 'row' : 'column', gap: 10 }}>
+              <Btn title="Check & connect" icon="git-network-outline" onPress={ghCheck} loading={busy === 'gh'} disabled={!ghRepo.trim()} style={wide ? { flex: 1 } : undefined} />
+              {ghs.gh_repo ? <Btn title="Use ShriTech storage" kind="outline" icon="arrow-undo-outline" onPress={ghClear} loading={busy === 'ghc'} style={wide ? { flex: 1 } : undefined} /> : null}
             </View>
             <Steps title="What the client does (once)" steps={[
               'Create a free account at github.com/signup (or log in).',
@@ -336,9 +337,9 @@ export function AdminSettings({ navigation, onLogout }: any) {
           </View>
           <Field label="Change to (username/repository-name)" value={defRepo} onChange={setDefRepo} placeholder="e.g. shritechservices/shritech-media-3" />
           {defNote ? <View style={{ backgroundColor: t.goldSoft, borderRadius: 12, padding: 10 }}><T size={12}>{defNote}</T></View> : null}
-          <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
-            <Btn title="Check & set as default" icon="swap-horizontal-outline" onPress={saveDef} loading={busy === 'def'} disabled={!gh?.saved || defRepo.trim().length < 3} style={{ flex: 1, minWidth: 240 }} />
-            {gh?.default_repo ? <Btn title="Reset to built-in" kind="outline" icon="arrow-undo-outline" onPress={resetDef} loading={busy === 'defr'} style={{ flex: 1, minWidth: 240 }} /> : null}
+          <View style={{ flexDirection: wide ? 'row' : 'column', gap: 10 }}>
+            <Btn title="Check & set as default" icon="swap-horizontal-outline" onPress={saveDef} loading={busy === 'def'} disabled={!gh?.saved || defRepo.trim().length < 3} style={wide ? { flex: 1 } : undefined} />
+            {gh?.default_repo ? <Btn title="Reset to built-in" kind="outline" icon="arrow-undo-outline" onPress={resetDef} loading={busy === 'defr'} style={wide ? { flex: 1 } : undefined} /> : null}
           </View>
           <Steps title="When a storage repository gets full (~1–2 GB)" steps={[
             'On GitHub (shritechservices): + → New repository → name like shritech-media-3 → Public → tick “Add a README file” → Create.',
