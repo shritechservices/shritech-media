@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import QRCode from 'react-native-qrcode-svg';
 import { Btn, Card, Field, Hero, Logo, Press, Rise, Seg, T } from '../ui';
 import { useTheme, F } from '../theme';
-import { adminForgot, adminLogin, adminReset, adminSetup, adminStatus, adminTotp, AdminStep, enterDemo, requestCode, verifyCode } from '../api';
+import { adminForgot, adminLogin, adminReset, adminSetup, adminStatus, adminTotp, AdminStep, enterDemo, loginPassword, requestCode, verifyCode } from '../api';
 
 function CodeBoxes({ value, onChange, auto, max = 6 }: { value: string; onChange: (v: string) => void; auto?: boolean; max?: number }) {
   const { t } = useTheme(); const ref = useRef<any>(null);
@@ -31,6 +31,7 @@ export default function Login({ onDone, onBack }: { onDone: (role: 'user' | 'adm
   const [mode, setMode] = useState<'user' | 'admin'>('user');
   const [err, setErr] = useState(''); const [busy, setBusy] = useState(false); const [info, setInfo] = useState('');
   // user
+  const [how, setHow] = useState<'code' | 'pw'>('code'); const [uPw, setUPw] = useState('');
   const [email, setEmail] = useState(''); const [biz, setBiz] = useState(''); const [code, setCode] = useState(''); const [sent, setSent] = useState(false);
   // admin
   const [hasAdmin, setHasAdmin] = useState<boolean | null>(null); const [aEmail, setAEmail] = useState(''); const [aPw, setAPw] = useState(''); const [setupKey, setSetupKey] = useState('');
@@ -51,6 +52,7 @@ export default function Login({ onDone, onBack }: { onDone: (role: 'user' | 'adm
     await requestCode(email.trim()); setSent(true); setCode('');
     setInfo(`We sent a login code to ${email.trim()}. Check your inbox (and spam), then type the code here.`);
   });
+  const pwLogin = () => run(async () => { if (!/^\S+@\S+\.\S+$/.test(email.trim())) throw new Error('Please enter your email address'); await loginPassword(email.trim(), uPw); onDone('user'); });
   const verify = () => run(async () => { if (code.length < 6) throw new Error('Enter the code from your email'); await verifyCode(email.trim(), code, biz.trim()); onDone('user'); });
   const aLogin = () => run(async () => {
     const r = hasAdmin === false ? await adminSetup(setupKey.trim(), aEmail.trim(), aPw) : await adminLogin(aEmail.trim(), aPw);
@@ -84,11 +86,18 @@ export default function Login({ onDone, onBack }: { onDone: (role: 'user' | 'adm
                 {mode === 'user' ? (!sent ? (
                   <>
                     <T w="b" size={20}>Log in or sign up 👋</T>
-                    <T s="mut" size={13}>Enter your Gmail. We’ll email you a login code — no password needed.</T>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      {([['code', 'Email code', 'mail-outline'], ['pw', 'Password', 'key-outline']] as const).map(([k, l, i]) => (
+                        <Press key={k} onPress={() => { setHow(k); setErr(''); }} style={{ flexDirection: 'row', gap: 6, alignItems: 'center', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 99, backgroundColor: how === k ? t.chip : 'transparent', borderWidth: 1, borderColor: how === k ? t.green : t.line }}>
+                          <Ionicons name={i} size={14} color={how === k ? t.green : t.mut} /><T w="s" size={12} c={how === k ? t.green : t.mut}>{l}</T>
+                        </Press>
+                      ))}
+                    </View>
+                    <T s="mut" size={13}>{how === 'code' ? 'Enter your Gmail. We’ll email you a login code — no password needed.' : 'Log in with the email and password ShriTech set for you.'}</T>
                     <Field label="Email" value={email} onChange={setEmail} placeholder="yourname@gmail.com" keyboard="email-address" />
-                    <Field label="Business name (new accounts only)" value={biz} onChange={setBiz} placeholder="e.g. Gupta Sweets" />
+                    {how === 'code' ? <Field label="Business name (new accounts only)" value={biz} onChange={setBiz} placeholder="e.g. Gupta Sweets" /> : <Field label="Password" value={uPw} onChange={setUPw} secure placeholder="••••••••" />}
                     {err ? <T size={13} c={t.red}>{err}</T> : null}
-                    <Btn title="Send code" icon="mail-outline" onPress={send} loading={busy} />
+                    {how === 'code' ? <Btn title="Send code" icon="mail-outline" onPress={send} loading={busy} /> : <Btn title="Log in" icon="log-in-outline" onPress={pwLogin} loading={busy} />}
                   </>
                 ) : (
                   <>

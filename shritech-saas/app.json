@@ -46,9 +46,6 @@
       ]
     ],
     "runtimeVersion": "exposdk:58.0.0",
-    "experiments": {
-      "baseUrl": "/shritech-media"
-    },
     "extra": {
       "eas": {
         "projectId": "3ad849f4-cd57-48f2-9669-8e6d56d364b6"

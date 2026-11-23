@@ -15,7 +15,7 @@ export function useOverview(range: () => { from: string; to: string }, deps: any
   return { posts, upcoming, loading, refreshing, failed, reload: () => load(true) };
 }
 
-export type Me = { user: { id: string; email: string; name: string | null; role: 'owner' | 'member' }; tenant: { id: string; name: string; status: string; plan: string; valid_till: string | null; post_quota: number; used_this_month: number; page_name: string | null; ig_username: string | null; connected: boolean; live: boolean; default_caption: string; contact_phone: string; request_note: string } };
+export type Me = { user: { id: string; email: string; name: string | null; role: 'owner' | 'member'; has_password?: boolean }; tenant: { id: string; name: string; status: string; plan: string; valid_till: string | null; post_quota: number; used_this_month: number; page_name: string | null; ig_username: string | null; connected: boolean; live: boolean; default_caption: string; contact_phone: string; request_note: string } };
 let ME: Me | null = null;
 export async function getMe(force = false) { if (!ME || force) ME = await api<Me>('me'); return ME; }
 export const resetMe = () => { ME = null; };

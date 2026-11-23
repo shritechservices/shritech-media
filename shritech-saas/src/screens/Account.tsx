@@ -10,7 +10,7 @@ import { getMe, Me } from '../data';
 export default function Account({ navigation, onLogout }: any) {
   const { t, pref, setPref } = useTheme(); const toast = useToast(); const confirm = useConfirm();
   const [me, setMe] = useState<Me | null>(null); const [team, setTeam] = useState<any[]>([]);
-  const [name, setName] = useState(''); const [phone, setPhone] = useState(''); const [note, setNote] = useState(''); const [cap, setCap] = useState(''); const [newMem, setNewMem] = useState(''); const [busy, setBusy] = useState('');
+  const [name, setName] = useState(''); const [phone, setPhone] = useState(''); const [note, setNote] = useState(''); const [cap, setCap] = useState(''); const [newMem, setNewMem] = useState(''); const [busy, setBusy] = useState(''); const [pw, setPw] = useState('');
   const load = useCallback(async () => {
     try { const m = await getMe(true); setMe(m); setName(m.tenant.name); setPhone(m.tenant.contact_phone); setNote(m.tenant.request_note); setCap(m.tenant.default_caption); setTeam(await api<any[]>('list_team')); } catch { }
   }, []);
@@ -19,6 +19,7 @@ export default function Account({ navigation, onLogout }: any) {
   const save = async () => { setBusy('save'); try { await api('update_profile', { name, contact_phone: phone, request_note: note, default_caption: cap }); toast(ten?.status === 'pending' ? 'Sent to ShriTech ✅' : 'Saved'); load(); } catch (e: any) { toast(e.message, false); } finally { setBusy(''); } };
   const add = async () => { setBusy('add'); try { await api('add_member', { email: newMem }); setNewMem(''); toast('Team member added. They log in with their email.'); load(); } catch (e: any) { toast(e.message, false); } finally { setBusy(''); } };
   const remove = async (u: any) => { if (!(await confirm({ title: `Remove ${u.email}?`, msg: 'They will no longer be able to log in.', ok: 'Remove', danger: true }))) return; try { await api('remove_member', { id: u.id }); load(); } catch (e: any) { toast(e.message, false); } };
+  const setPassword = async () => { setBusy('pw'); try { await api('user_set_password', { password: pw }); setPw(''); toast('Password saved. You can log in with email + password.'); } catch (e: any) { toast(e.message, false); } finally { setBusy(''); } };
   const out = async () => { if (await confirm({ title: isDemo() ? 'Exit demo?' : 'Log out?', ok: isDemo() ? 'Exit' : 'Log out' })) { try { await api('logout'); } catch { } onLogout(); } };
   const statusPill = ten ? ({ active: [t.green, t.chip, 'Active'], pending: [t.gold, t.goldSoft, 'Setting up'], paused: [t.red, t.redSoft, 'Paused'], closed: [t.mut, t.card2, 'Closed'] } as any)[ten.status] ?? [t.mut, t.card2, ten.status] : null;
   const used = ten ? Math.min(1, ten.post_quota ? ten.used_this_month / ten.post_quota : 0) : 0;
@@ -80,6 +81,16 @@ export default function Account({ navigation, onLogout }: any) {
           {owner ? <Field value={newMem} onChange={setNewMem} placeholder="Add team member email" keyboard="email-address" right={<Press onPress={add}><Ionicons name="person-add" size={22} color={t.green} /></Press>} /> : null}
         </Card>
       </Rise>
+      {!isDemo() ? (
+        <Rise i={3}>
+          <Card style={{ gap: 12 }}>
+            <T w="b" size={16}>{me?.user.has_password ? 'Change password' : 'Set a password (optional)'}</T>
+            <T s="mut" size={12}>You can always log in with an email code too.</T>
+            <Field label="New password (8+ characters)" value={pw} onChange={setPw} secure />
+            <Btn title="Save password" kind="outline" icon="key-outline" onPress={setPassword} loading={busy === 'pw'} />
+          </Card>
+        </Rise>
+      ) : null}
       <Rise i={3}>
         <Card style={{ gap: 12 }}>
           <T w="b" size={16}>Appearance</T>

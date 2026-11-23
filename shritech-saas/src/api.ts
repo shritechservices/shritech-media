@@ -44,6 +44,8 @@ export async function api<T = any>(action: string, data: Record<string, any> = {
 export const requestCode = (email: string) => api<{ sent: boolean; via: string }>('user_request_otp', { email }, '');
 export async function verifyCode(email: string, code: string, business?: string) { const r = await api<{ token: string }>('user_verify_otp', { email, code, business }, ''); await saveSession(r.token, 'user'); }
 
+export async function loginPassword(email: string, password: string) { const r = await api<{ token: string }>('user_login_password', { email, password }, ''); await saveSession(r.token, 'user'); }
+
 // ---- admin: password + Google Authenticator ----
 export type AdminStep = { token: string; stage: 'totp' | 'totp_enroll' | 'full'; secret?: string; otpauth?: string };
 export const adminStatus = () => api<{ admin_exists: boolean }>('admin_status', {}, '');
