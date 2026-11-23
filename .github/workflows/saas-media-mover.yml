@@ -1,0 +1,36 @@
+# Moves customer uploads from temporary Supabase storage into this GitHub repo (saas-media/),
+# then tells the SaaS backend to use the GitHub link and delete the temporary copy. Keeps Supabase usage low.
+name: SaaS media mover
+on:
+  schedule: [{ cron: '*/10 * * * *' }]
+  workflow_dispatch:
+permissions: { contents: write }
+concurrency: { group: saas-media-mover, cancel-in-progress: false }
+jobs:
+  move:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check key
+        env: { K: '${{ secrets.MOVER_KEY }}' }
+        run: if [ -z "$K" ]; then echo "MOVER_KEY not set yet"; exit 0; fi
+      - uses: actions/checkout@v4
+        with: { sparse-checkout: 'saas-media', sparse-checkout-cone-mode: true }
+      - name: Move files
+        env: { K: '${{ secrets.MOVER_KEY }}' }
+        run: |
+          [ -z "$K" ] && exit 0
+          API=https://hnrhctlxreexefymfcct.supabase.co/functions/v1/saas-api
+          curl -sf -X POST $API -H 'Content-Type: application/json' -H "x-mover-key: $K" -d '{"action":"mover_list"}' > list.json || exit 0
+          N=$(jq '.items|length' list.json); echo "items: $N"; [ "$N" = "0" ] && exit 0
+          mkdir -p saas-media
+          jq -c '.items[]' list.json | while read -r it; do
+            ID=$(echo "$it" | jq -r .id); P=$(echo "$it" | jq -r .path); U=$(echo "$it" | jq -r .public_url)
+            mkdir -p "saas-media/$(dirname "$P")"; curl -sfL "$U" -o "saas-media/$P" && echo "$ID saas-media/$P" >> moved.txt
+          done
+          [ -f moved.txt ] || exit 0
+          git config user.name "shritech-bot"; git config user.email "actions@users.noreply.github.com"
+          git add saas-media && git commit -qm "saas media [skip ci]" && git pull --rebase -q && git push -q
+          SHA=$(git rev-parse HEAD)
+          ITEMS=$(while read -r ID GP; do jq -n --arg id "$ID" --arg gp "$GP" --arg u "https://raw.githubusercontent.com/${{ github.repository }}/$SHA/$GP" '{id:$id,gh_path:$gp,url:$u}'; done < moved.txt | jq -s .)
+          jq -n --argjson items "$ITEMS" '{action:"mover_done",items:$items}' > done.json
+          curl -sf -X POST $API -H 'Content-Type: application/json' -H "x-mover-key: $K" -d @done.json

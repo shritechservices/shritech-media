@@ -1,0 +1,56 @@
+# ShriTech AutoPost SaaS: publishes the business/admin app to Expo Go AND the website to GitHub Pages.
+# Runs only when shritech-saas/ changes. Never touches media/, reels/, the live app, Supabase or Cloudflare.
+name: ShriTech SaaS app + website
+on:
+  push:
+    branches: [main]
+    paths: ['shritech-saas/**', '.github/workflows/shritech-saas.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+concurrency: { group: shritech-saas, cancel-in-progress: true }
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: shritech-saas } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: shritech-saas/package-lock.json }
+      - uses: expo/expo-github-action@v8
+        with: { eas-version: latest, token: '${{ secrets.EXPO_TOKEN }}' }
+      - run: npm ci
+      - name: Link Expo project (first run only)
+        run: |
+          PID=$(node -e "const a=require('./app.json');process.stdout.write(a.expo?.extra?.eas?.projectId||'')")
+          if [ -z "$PID" ]; then eas init --non-interactive --force; fi
+          node -e "
+            const fs=require('fs');const a=JSON.parse(fs.readFileSync('app.json'));
+            const pid=a.expo.extra.eas.projectId; a.expo.updates={url:'https://u.expo.dev/'+pid};
+            const sdk=require('expo/package.json').version.split('.')[0]+'.0.0';
+            a.expo.runtimeVersion='exposdk:'+sdk; fs.writeFileSync('app.json',JSON.stringify(a,null,2)+'\n');"
+      - name: Publish app for Expo Go
+        run: eas update --channel main --message "saas update" --non-interactive
+      - name: Build website
+        run: npx expo export --platform web && cp dist/index.html dist/404.html && touch dist/.nojekyll
+      - name: Save QR link
+        run: |
+          PID=$(node -e "process.stdout.write(require('./app.json').expo.extra.eas.projectId)")
+          SDK=$(node -e "process.stdout.write(require('expo/package.json').version.split('.')[0]+'.0.0')")
+          echo "exp://u.expo.dev/$PID?runtime-version=exposdk%3A$SDK&channel-name=main" > expo-go-url.txt
+      - name: Commit project link back
+        run: |
+          git config user.name "shritech-bot"; git config user.email "actions@users.noreply.github.com"
+          git add app.json expo-go-url.txt
+          git diff --cached --quiet || (git commit -m "saas: publish info [skip ci]" && git pull --rebase -q && git push)
+      - uses: actions/upload-pages-artifact@v3
+        with: { path: shritech-saas/dist }
+  pages:
+    needs: publish
+    runs-on: ubuntu-latest
+    environment: { name: github-pages, url: '${{ steps.d.outputs.page_url }}' }
+    steps:
+      - id: d
+        uses: actions/deploy-pages@v4
