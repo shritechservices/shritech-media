@@ -1,0 +1,1 @@
+exp://u.expo.dev/aea94849-d52d-4d45-8701-49b1b988d43c?runtime-version=exposdk%3A58.0.0&channel-name=main

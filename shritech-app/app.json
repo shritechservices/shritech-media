@@ -27,7 +27,11 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -41,6 +45,18 @@
           "photosPermission": "Choose reels and images to upload to your posting library."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "aea94849-d52d-4d45-8701-49b1b988d43c"
+      }
+    },
+    "owner": "shritechservices",
+    "updates": {
+      "url": "https://u.expo.dev/aea94849-d52d-4d45-8701-49b1b988d43c"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    }
   }
 }
