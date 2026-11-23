@@ -28,7 +28,7 @@ export function Press({ onPress, children, style, disabled, haptic = true }: { o
   const go = (v: number) => Animated.spring(s, { toValue: v, useNativeDriver: nd, speed: 40, bounciness: 8 }).start();
   return (
     <Pressable style={pickOuter(style)} disabled={disabled} onPressIn={() => go(0.96)} onPressOut={() => go(1)} onPress={() => { if (haptic) tap(); onPress?.(); }}>
-      <Animated.View style={[style as any, { transform: [{ scale: s }], opacity: disabled ? 0.5 : 1 }, (StyleSheet.flatten(style as any) as any)?.position === 'absolute' ? { position: 'relative', top: 0, left: 0, right: undefined, bottom: undefined } : null]}>{children}</Animated.View>
+      <Animated.View style={[style as any, (StyleSheet.flatten(style as any) as any)?.flex !== undefined ? { flex: undefined, flexGrow: 0, flexShrink: 0 } : null, { transform: [{ scale: s }], opacity: disabled ? 0.5 : 1 }, (StyleSheet.flatten(style as any) as any)?.position === 'absolute' ? { position: 'relative', top: 0, left: 0, right: undefined, bottom: undefined } : null]}>{children}</Animated.View>
     </Pressable>
   );
 }

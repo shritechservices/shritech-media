@@ -115,8 +115,10 @@ function Root() {
 }
 
 export default function App() {
-  const [ok] = useFonts({ Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold, Poppins_800ExtraBold });
-  if (!ok) return null;
+  const [ok, fontErr] = useFonts({ Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold, Poppins_800ExtraBold });
+  const [late, setLate] = useState(false);
+  useEffect(() => { const id = setTimeout(() => setLate(true), 4000); return () => clearTimeout(id); }, []);
+  if (!ok && !fontErr && !late) return null; // never wait forever for fonts
   return (
     <SafeAreaProvider>
       <ThemeProvider>

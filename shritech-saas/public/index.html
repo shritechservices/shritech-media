@@ -23,6 +23,7 @@
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
-    <div id="root"><div class="st-load"><div class="st-logo">Shri<b>Tech</b></div><div class="st-spin"></div><div class="st-sub">Loading AutoPost…</div></div></div>
+    <div id="root"><div class="st-load"><div class="st-logo">Shri<b>Tech</b></div><div class="st-spin"></div><div class="st-sub">Loading AutoPost…</div><a id="st-retry" href="#" style="display:none;margin-top:6px;padding:10px 18px;border-radius:12px;background:#16a34a;color:#fff;text-decoration:none;font-weight:600">Taking long? Tap to reload</a></div></div>
+    <script>setTimeout(function(){var b=document.getElementById("st-retry");if(b){b.style.display="inline-block";b.onclick=function(e){e.preventDefault();try{caches.keys().then(function(k){k.forEach(function(n){caches.delete(n)})})}catch(x){}location.replace(location.pathname+"?r="+Date.now())}}},12000);</script>
   </body>
 </html>
