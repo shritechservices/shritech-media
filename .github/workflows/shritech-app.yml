@@ -31,7 +31,8 @@ jobs:
           node -e "
             const fs=require('fs');const a=JSON.parse(fs.readFileSync('app.json'));
             const pid=a.expo.extra.eas.projectId; a.expo.updates={url:'https://u.expo.dev/'+pid};
-            delete a.expo.runtimeVersion; fs.writeFileSync('app.json',JSON.stringify(a,null,2)+'\n');"
+            const sdk=require('expo/package.json').version.split('.')[0]+'.0.0';
+            a.expo.runtimeVersion='exposdk:'+sdk; fs.writeFileSync('app.json',JSON.stringify(a,null,2)+'\n');"
       - name: Publish update for Expo Go
         run: eas update --channel main --message "app update" --non-interactive
       - name: Save QR link
